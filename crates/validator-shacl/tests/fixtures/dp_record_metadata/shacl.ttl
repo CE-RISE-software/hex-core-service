@@ -1,0 +1,279 @@
+@prefix dcat:  <http://www.w3.org/ns/dcat#> .
+@prefix dcterms:  <http://purl.org/dc/terms/> .
+@prefix dpm:  <https://ce-rise-models.codeberg.page/dp-record-metadata/> .
+@prefix pav:  <http://purl.org/pav/> .
+@prefix prof:  <http://www.w3.org/ns/dx/prof/> .
+@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix schema1:  <http://schema.org/> .
+@prefix sh:  <http://www.w3.org/ns/shacl#> .
+@prefix spdx:  <http://spdx.org/rdf/terms#> .
+@prefix void:  <http://rdfs.org/ns/void#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+dpm:DPRecordMetadata a sh:NodeShape ;
+    sh:closed true ;
+    sh:description "Root class for DMP & DPP Record Metadata model" ;
+    sh:ignoredProperties ( rdf:type ) ;
+    sh:property
+        [ sh:class dpm:AppliedSchema ;
+          sh:description "List of schemas/models that compose this DMP/DPP record" ;
+          sh:nodeKind sh:BlankNodeOrIRI ;
+          sh:order 2 ;
+          sh:path dpm:applied_schemas ],
+        [ sh:description "Whether this record describes a product or a material" ;
+          sh:in ( "product" "material" ) ;
+          sh:maxCount 1 ;
+          sh:order 0 ;
+          sh:path dpm:record_scope ],
+        [ sh:class dpm:RelatedPassport ;
+          sh:description "Links to related passport records with optional operation references" ;
+          sh:nodeKind sh:BlankNodeOrIRI ;
+          sh:order 1 ;
+          sh:path dpm:related_passports ],
+        [ sh:class void:Dataset ;
+          sh:description "Version information for the metadata structure itself" ;
+          sh:maxCount 1 ;
+          sh:nodeKind sh:BlankNodeOrIRI ;
+          sh:order 3 ;
+          sh:path dpm:metadata_versioning ] ;
+    sh:targetClass dpm:DPRecordMetadata .
+
+void:Dataset a sh:NodeShape ;
+    sh:closed true ;
+    sh:description "Version information for the DMP & DPP Record Metadata structure itself" ;
+    sh:ignoredProperties ( rdf:type ) ;
+    sh:property
+        [ sh:datatype xsd:string ;
+          sh:description "Backward/forward compatibility declaration (e.g., compatible-with: 1.x)" ;
+          sh:maxCount 1 ;
+          sh:nodeKind sh:Literal ;
+          sh:order 1 ;
+          sh:path pav:compatibleWith ],
+        [ sh:datatype xsd:string ;
+          sh:description "Minimum parser version required to process this metadata" ;
+          sh:maxCount 1 ;
+          sh:nodeKind sh:Literal ;
+          sh:order 5 ;
+          sh:path dpm:minimum_parser_version ],
+        [ sh:datatype xsd:dateTime ;
+          sh:description "Timestamp when this metadata record was last modified" ;
+          sh:maxCount 1 ;
+          sh:nodeKind sh:Literal ;
+          sh:order 3 ;
+          sh:path dcterms:modified ],
+        [ sh:datatype xsd:string ;
+          sh:description "Language of descriptive text in metadata (ISO 639-1 code)" ;
+          sh:maxCount 1 ;
+          sh:nodeKind sh:Literal ;
+          sh:order 6 ;
+          sh:path dcterms:language ],
+        [ sh:datatype xsd:string ;
+          sh:description "Version of this DMP & DPP Record Metadata schema structure" ;
+          sh:maxCount 1 ;
+          sh:nodeKind sh:Literal ;
+          sh:order 0 ;
+          sh:path pav:version ],
+        [ sh:datatype xsd:dateTime ;
+          sh:description "Timestamp when this metadata record was created" ;
+          sh:maxCount 1 ;
+          sh:nodeKind sh:Literal ;
+          sh:order 2 ;
+          sh:path dcterms:created ],
+        [ sh:datatype xsd:anyURI ;
+          sh:description "URL to the schema defining this metadata structure" ;
+          sh:maxCount 1 ;
+          sh:nodeKind sh:Literal ;
+          sh:order 4 ;
+          sh:path void:inDataset ] ;
+    sh:targetClass void:Dataset .
+
+dcat:Resource a sh:NodeShape ;
+    sh:closed true ;
+    sh:description "Core identification and reference information for a schema" ;
+    sh:ignoredProperties ( rdf:type ) ;
+    sh:property
+        [ sh:datatype xsd:string ;
+          sh:description "Alternative identifier if URL not available (e.g., URN, DOI, registry ID)" ;
+          sh:maxCount 1 ;
+          sh:nodeKind sh:Literal ;
+          sh:order 1 ;
+          sh:path dcterms:identifier ],
+        [ sh:datatype xsd:string ;
+          sh:description "Version of the referenced schema" ;
+          sh:maxCount 1 ;
+          sh:nodeKind sh:Literal ;
+          sh:order 4 ;
+          sh:path pav:version ],
+        [ sh:datatype xsd:anyURI ;
+          sh:description "URL or URI identifying the schema" ;
+          sh:maxCount 1 ;
+          sh:nodeKind sh:Literal ;
+          sh:order 0 ;
+          sh:path dcat:accessURL ],
+        [ sh:datatype xsd:string ;
+          sh:description "Technical format/language of the schema" ;
+          sh:maxCount 1 ;
+          sh:nodeKind sh:Literal ;
+          sh:order 3 ;
+          sh:path dcterms:format ],
+        [ sh:datatype xsd:string ;
+          sh:description "Algorithm used for hash (SHA-256, SHA-512, MD5, etc.)" ;
+          sh:maxCount 1 ;
+          sh:nodeKind sh:Literal ;
+          sh:order 6 ;
+          sh:path spdx:checksumAlgorithm ],
+        [ sh:datatype xsd:string ;
+          sh:description "Classification of schema source (CE-RISE, GS1, Schema.org, ISO, custom, etc.)" ;
+          sh:maxCount 1 ;
+          sh:nodeKind sh:Literal ;
+          sh:order 2 ;
+          sh:path dcterms:type ],
+        [ sh:datatype xsd:string ;
+          sh:description "Cryptographic hash/checksum for schema integrity verification" ;
+          sh:maxCount 1 ;
+          sh:nodeKind sh:Literal ;
+          sh:order 5 ;
+          sh:path spdx:checksumValue ],
+        [ sh:datatype xsd:anyURI ;
+          sh:description "URL to human-readable documentation for this schema" ;
+          sh:maxCount 1 ;
+          sh:nodeKind sh:Literal ;
+          sh:order 8 ;
+          sh:path schema1:url ],
+        [ sh:datatype xsd:string ;
+          sh:description "Namespace or prefix used for this schema in the record" ;
+          sh:maxCount 1 ;
+          sh:nodeKind sh:Literal ;
+          sh:order 7 ;
+          sh:path void:uriSpace ] ;
+    sh:targetClass dcat:Resource .
+
+dpm:AppliedSchema a sh:NodeShape ;
+    sh:closed true ;
+    sh:description "Reference to a schema or data model used in the DMP/DPP record" ;
+    sh:ignoredProperties ( rdf:type ) ;
+    sh:property
+        [ sh:class dpm:CompositionInfo ;
+          sh:description "Information about how this schema fits in the composite record" ;
+          sh:maxCount 1 ;
+          sh:nodeKind sh:BlankNodeOrIRI ;
+          sh:order 2 ;
+          sh:path dpm:composition_info ],
+        [ sh:class dcat:Resource ;
+          sh:description "Core reference information for the schema" ;
+          sh:maxCount 1 ;
+          sh:nodeKind sh:BlankNodeOrIRI ;
+          sh:order 0 ;
+          sh:path dpm:schema_reference ],
+        [ sh:class dpm:SchemaUsage ;
+          sh:description "Context about how this schema is used" ;
+          sh:maxCount 1 ;
+          sh:nodeKind sh:BlankNodeOrIRI ;
+          sh:order 1 ;
+          sh:path dpm:schema_usage ] ;
+    sh:targetClass dpm:AppliedSchema .
+
+dpm:CompositionInfo a sh:NodeShape ;
+    sh:closed true ;
+    sh:description "Information about how a schema fits within the composite DMP/DPP record" ;
+    sh:ignoredProperties ( rdf:type ) ;
+    sh:property
+        [ sh:datatype xsd:integer ;
+          sh:description "Position of this schema's data in the composite record (1-based)" ;
+          sh:maxCount 1 ;
+          sh:nodeKind sh:Literal ;
+          sh:order 0 ;
+          sh:path dpm:sequence_order ],
+        [ sh:datatype xsd:string ;
+          sh:description "JSONPath, XPath, or other pointer to where this schema's data resides" ;
+          sh:maxCount 1 ;
+          sh:nodeKind sh:Literal ;
+          sh:order 2 ;
+          sh:path dpm:data_location ],
+        [ sh:datatype xsd:string ;
+          sh:description "List of other schemas this one depends on (comma-separated)" ;
+          sh:maxCount 1 ;
+          sh:nodeKind sh:Literal ;
+          sh:order 4 ;
+          sh:path dpm:dependency_schemas ],
+        [ sh:datatype xsd:string ;
+          sh:description "Reference to parent schema if this is nested" ;
+          sh:maxCount 1 ;
+          sh:nodeKind sh:Literal ;
+          sh:order 3 ;
+          sh:path dpm:parent_schema ],
+        [ sh:datatype xsd:string ;
+          sh:description "How this schema's data is integrated (sequential, nested, mixed, overlay)" ;
+          sh:maxCount 1 ;
+          sh:nodeKind sh:Literal ;
+          sh:order 1 ;
+          sh:path dpm:composition_method ] ;
+    sh:targetClass dpm:CompositionInfo .
+
+dpm:RelatedPassport a sh:NodeShape ;
+    sh:closed true ;
+    sh:description "Link to another passport record, optionally tied to a traceability or life-cycle event" ;
+    sh:ignoredProperties ( rdf:type ) ;
+    sh:property
+        [ sh:description "Type of linkage between this record and the related passport" ;
+          sh:in ( "derived_from" "contributes_to" "split_from" "merged_into" "recycled_into" "manufactured_from" ) ;
+          sh:maxCount 1 ;
+          sh:order 1 ;
+          sh:path dpm:relation_type ],
+        [ sh:datatype xsd:anyURI ;
+          sh:description "Identifier or URL of the related passport record" ;
+          sh:maxCount 1 ;
+          sh:nodeKind sh:Literal ;
+          sh:order 0 ;
+          sh:path dpm:related_passport_id ],
+        [ sh:datatype xsd:string ;
+          sh:description "Reference to the traceability or life-cycle event data within the DP that defines this relationship" ;
+          sh:maxCount 1 ;
+          sh:nodeKind sh:Literal ;
+          sh:order 2 ;
+          sh:path dpm:operation_ref ] ;
+    sh:targetClass dpm:RelatedPassport .
+
+dpm:SchemaUsage a sh:NodeShape ;
+    sh:closed true ;
+    sh:description "Context about how a schema is used in the DMP/DPP record" ;
+    sh:ignoredProperties ( rdf:type ) ;
+    sh:property
+        [ sh:datatype xsd:string ;
+          sh:description "Additional notes about schema usage or exceptions" ;
+          sh:maxCount 1 ;
+          sh:nodeKind sh:Literal ;
+          sh:order 5 ;
+          sh:path rdfs:comment ],
+        [ sh:datatype xsd:string ;
+          sh:description "Purpose of this schema in the DMP/DPP" ;
+          sh:maxCount 1 ;
+          sh:nodeKind sh:Literal ;
+          sh:order 0 ;
+          sh:path prof:hasRole ],
+        [ sh:datatype xsd:string ;
+          sh:description "Specific profile or subset of the schema being used" ;
+          sh:maxCount 1 ;
+          sh:nodeKind sh:Literal ;
+          sh:order 1 ;
+          sh:path prof:hasProfile ],
+        [ sh:datatype xsd:string ;
+          sh:description "Level of data completeness for this schema (full, partial, minimal)" ;
+          sh:maxCount 1 ;
+          sh:nodeKind sh:Literal ;
+          sh:order 2 ;
+          sh:path dpm:data_completeness ],
+        [ sh:datatype xsd:float ;
+          sh:description "Percentage of schema fields that contain data (0-100)" ;
+          sh:maxCount 1 ;
+          sh:nodeKind sh:Literal ;
+          sh:order 3 ;
+          sh:path dpm:completeness_percentage ],
+        [ sh:datatype xsd:anyURI ;
+          sh:description "Alternative schema to use if primary is not recognized" ;
+          sh:maxCount 1 ;
+          sh:nodeKind sh:Literal ;
+          sh:order 4 ;
+          sh:path dpm:fallback_schema_url ] ;
+    sh:targetClass dpm:SchemaUsage .

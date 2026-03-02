@@ -1,0 +1,23 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      IO_ADAPTER_ID: memory
+      IO_ADAPTER_VERSION: v1
+    depends_on:
+      - mock-registry
+    restart: unless-stopped
+
+  mock-registry:
+    image: wiremock/wiremock:latest
+    ports:
+      - "8888:8080"
+    volumes:
+      - ./dev/wiremock:/home/wiremock
+    restart: unless-stopped

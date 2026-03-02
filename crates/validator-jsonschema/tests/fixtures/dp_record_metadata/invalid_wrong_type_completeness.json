@@ -1,0 +1,10 @@
+{
+  "record_scope": "product",
+  "applied_schemas": [
+    {
+      "schema_usage": {
+        "completeness_percentage": "ninety-five"
+      }
+    }
+  ]
+}

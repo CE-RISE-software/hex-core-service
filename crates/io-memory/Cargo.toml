@@ -1,0 +1,15 @@
+[package]
+name = "hex-io-memory"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+hex-core      = { path = "../core" }
+async-trait   = { workspace = true }
+serde_json    = { workspace = true }
+thiserror     = { workspace = true }
+tokio         = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true }

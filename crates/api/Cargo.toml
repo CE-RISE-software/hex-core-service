@@ -1,0 +1,36 @@
+[package]
+name = "hex-api"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "hex-api"
+path = "src/main.rs"
+
+[dependencies]
+hex-core     = { path = "../core" }
+hex-registry = { path = "../registry" }
+
+anyhow             = "1"
+async-trait        = { workspace = true }
+axum               = { workspace = true }
+hyper              = { workspace = true }
+jsonwebtoken       = { workspace = true }
+serde              = { workspace = true }
+serde_json         = { workspace = true }
+thiserror          = { workspace = true }
+tokio              = { workspace = true }
+tower              = { workspace = true }
+tower-http         = { workspace = true }
+tracing            = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+[dev-dependencies]
+hex-io-memory = { path = "../io-memory" }
+mockall       = { workspace = true }
+wiremock      = { workspace = true }
+tokio         = { workspace = true }
+
+[features]
+integration-tests = []

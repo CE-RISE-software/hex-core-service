@@ -1,0 +1,70 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Run full test suite
+        run: cargo test --features integration-tests
+        env:
+          RUSTFLAGS: "-D warnings"
+
+      - name: Build release binary
+        run: cargo build --release -p hex-api
+
+      - name: Extract version tag
+        id: tag
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Build container image
+        run: |
+          docker build \
+            -t ${{ vars.REGISTRY_HOST }}/${{ vars.REGISTRY_NAMESPACE }}/hex-core-service:${{ steps.tag.outputs.VERSION }} \
+            -t ${{ vars.REGISTRY_HOST }}/${{ vars.REGISTRY_NAMESPACE }}/hex-core-service:${{ github.sha }} \
+            -t ${{ vars.REGISTRY_HOST }}/${{ vars.REGISTRY_NAMESPACE }}/hex-core-service:latest \
+            .
+
+      - name: Log in to container registry
+        run: echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login ${{ vars.REGISTRY_HOST }} -u ${{ secrets.REGISTRY_USERNAME }} --password-stdin
+
+      - name: Push container image
+        run: |
+          docker push ${{ vars.REGISTRY_HOST }}/${{ vars.REGISTRY_NAMESPACE }}/hex-core-service:${{ steps.tag.outputs.VERSION }}
+          docker push ${{ vars.REGISTRY_HOST }}/${{ vars.REGISTRY_NAMESPACE }}/hex-core-service:${{ github.sha }}
+          docker push ${{ vars.REGISTRY_HOST }}/${{ vars.REGISTRY_NAMESPACE }}/hex-core-service:latest
+
+      - name: Push release tag to GitHub mirror
+        run: |
+          git remote add github https://x-token:${{ secrets.GITHUB_MIRROR_TOKEN }}@github.com/${{ vars.GITHUB_MIRROR_REPO }}.git
+          git push github ${{ steps.tag.outputs.VERSION }}
+        continue-on-error: true
+
+      - name: Export OpenAPI artifact
+        run: |
+          # Extract the bundled openapi.json from the release binary output if present.
+          # Adjust path if the build step produces it elsewhere.
+          if [ -f target/release/openapi.json ]; then
+            cp target/release/openapi.json openapi-${{ steps.tag.outputs.VERSION }}.json
+          fi
+        continue-on-error: true

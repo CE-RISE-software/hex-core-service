@@ -1,0 +1,40 @@
+# Rust build output
+/target/
+**/*.rs.bk
+
+# Cargo lock — keep for binaries, not libraries
+# (this is a deployable service binary, so Cargo.lock is committed)
+# Cargo.lock
+
+# Environment — never commit real secrets
+.env
+!.env.example
+
+# Editor and OS artifacts
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# JetBrains
+*.iml
+*.iws
+*.ipr
+
+# Docker
+docker-compose.override.yml
+
+# mdBook build output
+docs/book/
+
+# Test and coverage output
+tarpaulin-report.html
+lcov.info
+coverage/
+
+# Temporary and misc
+*.log
+*.tmp
+*.bak

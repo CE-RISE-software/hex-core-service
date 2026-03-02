@@ -1,0 +1,18 @@
+[package]
+name = "hex-io-http"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+hex-core      = { path = "../core" }
+async-trait   = { workspace = true }
+reqwest       = { workspace = true }
+serde_json    = { workspace = true }
+thiserror     = { workspace = true }
+tokio         = { workspace = true }
+tracing       = { workspace = true }
+
+[dev-dependencies]
+tokio    = { workspace = true }
+wiremock = { workspace = true }

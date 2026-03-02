@@ -1,0 +1,59 @@
+[workspace]
+members = [
+    "crates/core",
+    "crates/registry",
+    "crates/api",
+    "crates/validator-jsonschema",
+    "crates/validator-shacl",
+    "crates/io-memory",
+    "crates/io-http",
+    "crates/cli",
+]
+resolver = "2"
+
+[workspace.package]
+edition = "2021"
+version = "0.1.0"
+license = "EUPL-1.2"
+repository = "https://codeberg.org/CE-RISE-software/hex-core-service"
+
+[workspace.dependencies]
+# Core
+async-trait    = "0.1"
+serde          = { version = "1", features = ["derive"] }
+serde_json     = "1"
+thiserror      = "1"
+
+# Async runtime
+tokio          = { version = "1", features = ["full"] }
+
+# HTTP server
+axum           = "0.7"
+tower          = "0.4"
+tower-http     = { version = "0.5", features = ["trace", "limit"] }
+hyper          = { version = "1", features = ["full"] }
+
+# HTTP client
+reqwest        = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
+
+# Auth
+jsonwebtoken   = "9"
+
+# Validation
+jsonschema     = "0.18"
+
+# Observability
+tracing            = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+# Test utilities
+mockall    = "0.13"
+wiremock   = "0.6"
+
+# Internal crates
+hex-core                 = { path = "crates/core" }
+hex-registry             = { path = "crates/registry" }
+hex-validator-jsonschema = { path = "crates/validator-jsonschema" }
+hex-validator-shacl      = { path = "crates/validator-shacl" }
+hex-io-memory            = { path = "crates/io-memory" }
+hex-io-http              = { path = "crates/io-http" }

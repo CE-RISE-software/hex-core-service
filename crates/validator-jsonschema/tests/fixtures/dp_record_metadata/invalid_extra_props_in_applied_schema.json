@@ -1,0 +1,8 @@
+{
+  "record_scope": "product",
+  "applied_schemas": [
+    {
+      "unknown_field": "this field is not in the AppliedSchema definition"
+    }
+  ]
+}

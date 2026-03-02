@@ -1,0 +1,10 @@
+{
+  "record_scope": "product",
+  "related_passports": [
+    {
+      "related_passport_id": "https://passports.example.org/material/xyz-789",
+      "relation_type": "transformed_by",
+      "operation_ref": "step-001"
+    }
+  ]
+}

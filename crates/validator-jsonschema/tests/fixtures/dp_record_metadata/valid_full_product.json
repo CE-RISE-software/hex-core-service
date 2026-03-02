@@ -1,0 +1,82 @@
+{
+  "record_scope": "product",
+  "applied_schemas": [
+    {
+      "schema_reference": {
+        "schema_url": "https://ce-rise-models.codeberg.page/dp-record-metadata/schema.json",
+        "schema_identifier": "ce-rise:dp-record-metadata",
+        "schema_version": "0.0.2",
+        "schema_type": "CE-RISE",
+        "schema_language": "JSON-Schema",
+        "schema_namespace": "dpm",
+        "schema_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "hash_algorithm": "SHA-256",
+        "documentation_url": "https://ce-rise-models.codeberg.page/dp-record-metadata/"
+      },
+      "schema_usage": {
+        "schema_role": "core-identity",
+        "schema_profile": "full",
+        "data_completeness": "full",
+        "completeness_percentage": 100.0,
+        "fallback_schema_url": "https://ce-rise-models.codeberg.page/dp-record-metadata/schema.json",
+        "schema_notes": "Primary CE-RISE metadata envelope schema"
+      },
+      "composition_info": {
+        "sequence_order": 1,
+        "composition_method": "sequential",
+        "data_location": "$.metadata",
+        "parent_schema": null,
+        "dependency_schemas": null
+      }
+    },
+    {
+      "schema_reference": {
+        "schema_url": "https://gs1.org/voc/ProductPassport",
+        "schema_identifier": "gs1:ProductPassport",
+        "schema_version": "2.0.1",
+        "schema_type": "GS1",
+        "schema_language": "JSON-Schema",
+        "schema_namespace": "gs1",
+        "schema_hash": "a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3",
+        "hash_algorithm": "SHA-256",
+        "documentation_url": "https://docs.gs1.org/product-passport"
+      },
+      "schema_usage": {
+        "schema_role": "sustainability-data",
+        "schema_profile": "partial",
+        "data_completeness": "partial",
+        "completeness_percentage": 72.5,
+        "fallback_schema_url": null,
+        "schema_notes": "GS1 product passport fields used for traceability"
+      },
+      "composition_info": {
+        "sequence_order": 2,
+        "composition_method": "nested",
+        "data_location": "$.gs1",
+        "parent_schema": "ce-rise:dp-record-metadata",
+        "dependency_schemas": null
+      }
+    }
+  ],
+  "related_passports": [
+    {
+      "related_passport_id": "https://passports.example.org/material/raw-polymer-batch-42",
+      "relation_type": "manufactured_from",
+      "operation_ref": "production-step-001"
+    },
+    {
+      "related_passport_id": "https://passports.example.org/product/precursor-component-7",
+      "relation_type": "derived_from",
+      "operation_ref": null
+    }
+  ],
+  "metadata_versioning": {
+    "metadata_schema_version": "0.0.2",
+    "compatibility_level": "compatible-with: 0.x",
+    "metadata_created": "2024-03-01T09:00:00Z",
+    "metadata_modified": "2024-06-15T14:30:00Z",
+    "metadata_schema_url": "https://ce-rise-models.codeberg.page/dp-record-metadata/schema.json",
+    "metadata_language": "en",
+    "minimum_parser_version": "0.0.1"
+  }
+}

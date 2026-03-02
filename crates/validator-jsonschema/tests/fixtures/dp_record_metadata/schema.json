@@ -1,0 +1,274 @@
+{
+  "$defs": {
+    "AppliedSchema": {
+      "additionalProperties": false,
+      "description": "Reference to a schema or data model used in the DMP/DPP record",
+      "properties": {
+        "composition_info": {
+          "anyOf": [
+            { "$ref": "#/$defs/CompositionInfo" },
+            { "type": "null" }
+          ],
+          "description": "Information about how this schema fits in the composite record"
+        },
+        "schema_reference": {
+          "anyOf": [
+            { "$ref": "#/$defs/SchemaReference" },
+            { "type": "null" }
+          ],
+          "description": "Core reference information for the schema"
+        },
+        "schema_usage": {
+          "anyOf": [
+            { "$ref": "#/$defs/SchemaUsage" },
+            { "type": "null" }
+          ],
+          "description": "Context about how this schema is used"
+        }
+      },
+      "title": "AppliedSchema",
+      "type": "object"
+    },
+    "CompositionInfo": {
+      "additionalProperties": false,
+      "description": "Information about how a schema fits within the composite DMP/DPP record",
+      "properties": {
+        "composition_method": {
+          "description": "How this schema's data is integrated (sequential, nested, mixed, overlay)",
+          "type": ["string", "null"]
+        },
+        "data_location": {
+          "description": "JSONPath, XPath, or other pointer to where this schema's data resides",
+          "type": ["string", "null"]
+        },
+        "dependency_schemas": {
+          "description": "List of other schemas this one depends on (comma-separated)",
+          "type": ["string", "null"]
+        },
+        "parent_schema": {
+          "description": "Reference to parent schema if this is nested",
+          "type": ["string", "null"]
+        },
+        "sequence_order": {
+          "description": "Position of this schema's data in the composite record (1-based)",
+          "type": ["integer", "null"]
+        }
+      },
+      "title": "CompositionInfo",
+      "type": "object"
+    },
+    "DPRecordMetadata": {
+      "additionalProperties": false,
+      "description": "Root class for DMP & DPP Record Metadata model",
+      "properties": {
+        "applied_schemas": {
+          "description": "List of schemas/models that compose this DMP/DPP record",
+          "items": { "$ref": "#/$defs/AppliedSchema" },
+          "type": ["array", "null"]
+        },
+        "metadata_versioning": {
+          "anyOf": [
+            { "$ref": "#/$defs/MetadataVersioning" },
+            { "type": "null" }
+          ],
+          "description": "Version information for the metadata structure itself"
+        },
+        "record_scope": {
+          "$ref": "#/$defs/RecordScopeEnum",
+          "description": "Whether this record describes a product or a material"
+        },
+        "related_passports": {
+          "description": "Links to related passport records with optional operation references",
+          "items": { "$ref": "#/$defs/RelatedPassport" },
+          "type": ["array", "null"]
+        }
+      },
+      "title": "DPRecordMetadata",
+      "type": "object"
+    },
+    "MetadataVersioning": {
+      "additionalProperties": false,
+      "description": "Version information for the DMP & DPP Record Metadata structure itself",
+      "properties": {
+        "compatibility_level": {
+          "description": "Backward/forward compatibility declaration (e.g., compatible-with: 1.x)",
+          "type": ["string", "null"]
+        },
+        "metadata_created": {
+          "description": "Timestamp when this metadata record was created",
+          "format": "date-time",
+          "type": ["string", "null"]
+        },
+        "metadata_language": {
+          "description": "Language of descriptive text in metadata (ISO 639-1 code)",
+          "type": ["string", "null"]
+        },
+        "metadata_modified": {
+          "description": "Timestamp when this metadata record was last modified",
+          "format": "date-time",
+          "type": ["string", "null"]
+        },
+        "metadata_schema_url": {
+          "description": "URL to the schema defining this metadata structure",
+          "type": ["string", "null"]
+        },
+        "metadata_schema_version": {
+          "description": "Version of this DMP & DPP Record Metadata schema structure",
+          "type": ["string", "null"]
+        },
+        "minimum_parser_version": {
+          "description": "Minimum parser version required to process this metadata",
+          "type": ["string", "null"]
+        }
+      },
+      "title": "MetadataVersioning",
+      "type": "object"
+    },
+    "PassportRelationTypeEnum": {
+      "description": "Relationship type between passport records",
+      "enum": [
+        "derived_from",
+        "contributes_to",
+        "split_from",
+        "merged_into",
+        "recycled_into",
+        "manufactured_from"
+      ],
+      "title": "PassportRelationTypeEnum",
+      "type": "string"
+    },
+    "RecordScopeEnum": {
+      "description": "Whether the record is about a product or a material",
+      "enum": ["product", "material"],
+      "title": "RecordScopeEnum",
+      "type": "string"
+    },
+    "RelatedPassport": {
+      "additionalProperties": false,
+      "description": "Link to another passport record, optionally tied to a traceability or life-cycle event",
+      "properties": {
+        "operation_ref": {
+          "description": "Reference to the traceability or life-cycle event data within the DP that defines this relationship",
+          "type": ["string", "null"]
+        },
+        "related_passport_id": {
+          "description": "Identifier or URL of the related passport record",
+          "type": ["string", "null"]
+        },
+        "relation_type": {
+          "$ref": "#/$defs/PassportRelationTypeEnum",
+          "description": "Type of linkage between this record and the related passport"
+        }
+      },
+      "title": "RelatedPassport",
+      "type": "object"
+    },
+    "SchemaReference": {
+      "additionalProperties": false,
+      "description": "Core identification and reference information for a schema",
+      "properties": {
+        "documentation_url": {
+          "description": "URL to human-readable documentation for this schema",
+          "type": ["string", "null"]
+        },
+        "hash_algorithm": {
+          "description": "Algorithm used for hash (SHA-256, SHA-512, MD5, etc.)",
+          "type": ["string", "null"]
+        },
+        "schema_hash": {
+          "description": "Cryptographic hash/checksum for schema integrity verification",
+          "type": ["string", "null"]
+        },
+        "schema_identifier": {
+          "description": "Alternative identifier if URL not available (e.g., URN, DOI, registry ID)",
+          "type": ["string", "null"]
+        },
+        "schema_language": {
+          "description": "Technical format/language of the schema",
+          "type": ["string", "null"]
+        },
+        "schema_namespace": {
+          "description": "Namespace or prefix used for this schema in the record",
+          "type": ["string", "null"]
+        },
+        "schema_type": {
+          "description": "Classification of schema source (CE-RISE, GS1, Schema.org, ISO, custom, etc.)",
+          "type": ["string", "null"]
+        },
+        "schema_url": {
+          "description": "URL or URI identifying the schema",
+          "type": ["string", "null"]
+        },
+        "schema_version": {
+          "description": "Version of the referenced schema",
+          "type": ["string", "null"]
+        }
+      },
+      "title": "SchemaReference",
+      "type": "object"
+    },
+    "SchemaUsage": {
+      "additionalProperties": false,
+      "description": "Context about how a schema is used in the DMP/DPP record",
+      "properties": {
+        "completeness_percentage": {
+          "description": "Percentage of schema fields that contain data (0-100)",
+          "type": ["number", "null"]
+        },
+        "data_completeness": {
+          "description": "Level of data completeness for this schema (full, partial, minimal)",
+          "type": ["string", "null"]
+        },
+        "fallback_schema_url": {
+          "description": "Alternative schema to use if primary is not recognized",
+          "type": ["string", "null"]
+        },
+        "schema_notes": {
+          "description": "Additional notes about schema usage or exceptions",
+          "type": ["string", "null"]
+        },
+        "schema_profile": {
+          "description": "Specific profile or subset of the schema being used",
+          "type": ["string", "null"]
+        },
+        "schema_role": {
+          "description": "Purpose of this schema in the DMP/DPP",
+          "type": ["string", "null"]
+        }
+      },
+      "title": "SchemaUsage",
+      "type": "object"
+    }
+  },
+  "$id": "https://ce-rise-models.codeberg.page/dp-record-metadata/",
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "additionalProperties": true,
+  "description": "Root class for DMP & DPP Record Metadata model",
+  "metamodel_version": "1.7.0",
+  "properties": {
+    "applied_schemas": {
+      "description": "List of schemas/models that compose this DMP/DPP record",
+      "items": { "$ref": "#/$defs/AppliedSchema" },
+      "type": ["array", "null"]
+    },
+    "metadata_versioning": {
+      "anyOf": [
+        { "$ref": "#/$defs/MetadataVersioning" },
+        { "type": "null" }
+      ],
+      "description": "Version information for the metadata structure itself"
+    },
+    "record_scope": {
+      "$ref": "#/$defs/RecordScopeEnum",
+      "description": "Whether this record describes a product or a material"
+    },
+    "related_passports": {
+      "description": "Links to related passport records with optional operation references",
+      "items": { "$ref": "#/$defs/RelatedPassport" },
+      "type": ["array", "null"]
+    }
+  },
+  "title": "dp-record-metadata",
+  "type": "object",
+  "version": "0.0.2"
+}

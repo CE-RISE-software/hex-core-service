@@ -1,0 +1,10 @@
+{
+  "record_scope": "product",
+  "applied_schemas": [
+    {
+      "composition_info": {
+        "sequence_order": "first"
+      }
+    }
+  ]
+}
