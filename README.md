@@ -22,7 +22,7 @@ Full technical documentation is published at the project Pages site.
 
 ## Status
 
-Early development — architecture and port contracts are being established. See `AGENTS.md` for the full design specification and implementation phases.
+Early development — architecture and port contracts are being established.
 
 ## Quick start
 
