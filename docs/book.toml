@@ -9,4 +9,4 @@ src = "."
 build-dir = "book"
 
 [output.html]
-favicon = "images/favicon.png"
+theme = "theme"
