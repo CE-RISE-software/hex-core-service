@@ -15,6 +15,7 @@ pub struct ErrorBody {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub enum ApiError {
     Core(CoreError),
     MissingIdempotencyKey,
@@ -155,18 +156,4 @@ impl From<CoreError> for ApiError {
     fn from(err: CoreError) -> Self {
         ApiError::Core(err)
     }
-}
-
-// ── Helper constructors for handlers ─────────────────────────────────────────
-
-pub fn not_found(msg: &str) -> Response {
-    ApiError::Core(CoreError::ModelNotFound {
-        model: msg.into(),
-        version: String::new(),
-    })
-    .into_response()
-}
-
-pub fn registry_error(e: hex_core::domain::error::RegistryError) -> Response {
-    ApiError::Core(CoreError::Registry(e)).into_response()
 }

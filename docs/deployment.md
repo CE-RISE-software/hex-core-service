@@ -90,7 +90,8 @@ docker build -t hex-core-service:local .
 
 # Run the image
 docker run -p 8080:8080 \
-  -e REGISTRY_URL_TEMPLATE="https://example.com/models/{model}/v{version}/" \
+  -e REGISTRY_MODE="catalog" \
+  -e REGISTRY_CATALOG_URL="https://config.example.org/hex-core/catalog.json" \
   -e IO_ADAPTER_ID="memory" \
   -e AUTH_JWKS_URL="https://keycloak.example.com/realms/cerise/protocol/openid-connect/certs" \
   -e AUTH_ISSUER="https://keycloak.example.com/realms/cerise" \
@@ -156,8 +157,8 @@ All runtime configuration is via environment variables. See the [Configuration G
 Required variables for startup:
 
 ```bash
-REGISTRY_MODE=url
-REGISTRY_URL_TEMPLATE=https://codeberg.org/CE-RISE-models/{model}/src/tag/pages-v{version}/generated/
+REGISTRY_MODE=catalog
+REGISTRY_CATALOG_URL=https://example.org/catalog.json
 IO_ADAPTER_ID=memory
 AUTH_JWKS_URL=https://keycloak.example.com/realms/cerise/protocol/openid-connect/certs
 AUTH_ISSUER=https://keycloak.example.com/realms/cerise
@@ -174,8 +175,10 @@ kind: ConfigMap
 metadata:
   name: hex-core-config
 data:
-  REGISTRY_MODE: "url"
-  REGISTRY_URL_TEMPLATE: "https://codeberg.org/CE-RISE-models/{model}/src/tag/pages-v{version}/generated/"
+  REGISTRY_MODE: "catalog"
+  REGISTRY_CATALOG_URL: "https://config.example.org/hex-core/catalog.json"
+  REGISTRY_ALLOWED_HOSTS: "codeberg.org,config.example.org"
+  REGISTRY_REQUIRE_HTTPS: "true"
   IO_ADAPTER_ID: "circularise"
   IO_ADAPTER_VERSION: "v1"
   SERVER_PORT: "8080"
@@ -194,6 +197,31 @@ stringData:
   AUTH_AUDIENCE: "hex-core-service"
   IO_ADAPTER_BASE_URL: "https://io-adapter.internal.example.com"
 ```
+
+### GitOps Catalog Deployment Pattern
+
+Use a single catalog artifact as the registry source of truth:
+
+```json
+{
+  "models": [
+    {
+      "model": "re-indicators-specification",
+      "version": "0.0.3",
+      "base_url": "https://codeberg.org/CE-RISE-models/re-indicators-specification/src/tag/pages-v0.0.3/generated/"
+    }
+  ]
+}
+```
+
+Recommended flow:
+
+1. Update `catalog.json` via GitOps pull request.
+2. Publish catalog to stable URL (or mount as file in cluster).
+3. Trigger `POST /admin/registry/refresh`.
+4. Confirm `GET /models` reflects the new catalog.
+
+No service restart is required for model list changes.
 
 ---
 

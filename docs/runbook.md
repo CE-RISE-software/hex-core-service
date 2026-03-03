@@ -109,39 +109,50 @@ The artifact registry can be manually refreshed to discover new models or update
 **Authentication:** Requires admin token or network-level protection (mTLS, private subnet).
 
 **Process:**
-1. The registry re-fetches all model artifacts from configured URLs
-2. Validation is performed on each artifact set
-3. A new index is built in memory
-4. The index is atomically swapped (no downtime)
-5. A summary is returned
+1. The registry re-loads the configured catalog source (`REGISTRY_CATALOG_URL` or `REGISTRY_CATALOG_FILE`).
+2. The registry resolves artifacts (`route.json` required) for each catalog entry.
+3. A new index is built in memory.
+4. The index is atomically swapped (no downtime).
+5. A refresh summary is returned.
 
-**Expected Response:**
+If `REGISTRY_CATALOG_JSON` is used, refresh reuses the inline catalog value loaded at startup.
+
+**Expected response shape:**
 ```json
 {
-  "timestamp": "2024-01-15T10:45:00Z",
-  "models_discovered": 5,
-  "models_loaded": 5,
-  "errors": [],
-  "duration_ms": 1234
+  "refreshed_at": "2026-03-03T18:12:45Z",
+  "models_found": 5,
+  "errors": []
 }
 ```
 
-**With Errors:**
+**Partial failure example:**
 ```json
 {
-  "timestamp": "2024-01-15T10:45:00Z",
-  "models_discovered": 6,
-  "models_loaded": 5,
+  "refreshed_at": "2026-03-03T18:12:45Z",
+  "models_found": 4,
   "errors": [
-    {
-      "model": "product-passport",
-      "version": "2.0.0",
-      "error": "missing route.json"
-    }
-  ],
-  "duration_ms": 1456
+    "product-passport@2.0.0: model not found in registry: product-passport v2.0.0 (https://...)"
+  ]
 }
 ```
+
+Behavior details:
+
+- Catalog load/parse failure: refresh returns error and previous index remains active.
+- Entry-level fetch/validation failure: refresh succeeds, failing entries are excluded, and errors are listed.
+- Duplicate `(model, version)` in catalog: refresh fails and previous index remains active.
+
+### GitOps workflow
+
+For GitOps-managed deployments:
+
+1. Publish/update `catalog.json` in your config repo/object storage.
+2. Ensure service points to it via `REGISTRY_CATALOG_URL` or mounted `REGISTRY_CATALOG_FILE`.
+3. Trigger `POST /admin/registry/refresh`.
+4. Verify with `GET /models`.
+
+This allows model additions/removals/version updates without restarting the service.
 
 ### When to Refresh
 
@@ -255,7 +266,7 @@ groups:
 4. Verify registry URL template is valid
 
 **Common Causes:**
-- Missing `REGISTRY_URL_TEMPLATE`
+- Missing catalog source (`REGISTRY_CATALOG_URL`, `REGISTRY_CATALOG_FILE`, or `REGISTRY_CATALOG_JSON`)
 - Invalid `AUTH_JWKS_URL` (unreachable or malformed)
 - Missing `IO_ADAPTER_BASE_URL` when using HTTP adapter
 - Network policy blocking outbound registry access
@@ -272,11 +283,11 @@ groups:
 2. Check logs for registry errors
 3. Verify registry URLs are accessible from the pod:
    ```bash
-   kubectl exec -it deployment/hex-core-service -- wget -O- $REGISTRY_URL_TEMPLATE
+   kubectl exec -it deployment/hex-core-service -- wget -O- $REGISTRY_CATALOG_URL
    ```
 
 **Common Causes:**
-- Registry URL template has incorrect placeholders
+- Catalog URL/file path is wrong or unreachable
 - `REGISTRY_ALLOWED_HOSTS` blocks the registry domain
 - `REGISTRY_REQUIRE_HTTPS=true` but registry uses HTTP
 - Missing `route.json` in all model repositories

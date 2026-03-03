@@ -4,10 +4,7 @@ use axum::{
     response::{IntoResponse, Response},
     Json,
 };
-use hex_core::{
-    domain::model::{ModelId, ModelVersion},
-    ports::outbound::registry::ArtifactRegistryPort,
-};
+use hex_core::domain::model::{ModelId, ModelVersion};
 use std::sync::Arc;
 
 use crate::AppState;

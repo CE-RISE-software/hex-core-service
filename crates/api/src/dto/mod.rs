@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 //! Data Transfer Objects for the REST API layer.
 //!
 //! DTOs are the shapes of JSON request and response bodies.

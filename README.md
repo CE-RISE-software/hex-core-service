@@ -2,7 +2,7 @@
 
 A Rust-based hexagonal core service that validates and orchestrates IO for versioned, digital-passport-like records using externally published model artifacts.
 
-This is the primary deployable microservice for CE-RISE data integrations. It exposes a model-agnostic REST API, resolves validation artifacts from a versioned URL registry, and dispatches to pluggable outbound IO adapters — all without coupling to any specific HTTP framework or repository provider.
+This is the primary deployable microservice for CE-RISE data integrations. It exposes a model-agnostic REST API, resolves validation artifacts from a versioned catalog of model URLs, and dispatches to pluggable outbound IO adapters — all without coupling to any specific HTTP framework or repository provider.
 
 Full technical documentation is published at the project Pages site.
 
@@ -11,7 +11,7 @@ Full technical documentation is published at the project Pages site.
 ## What this repository contains
 
 - `crates/core` — domain types, port traits, and use-case implementations (no I/O, no HTTP)
-- `crates/registry` — artifact registry resolution from versioned URL templates
+- `crates/registry` — catalog-backed artifact registry with URL artifact fetching
 - `crates/api` — REST inbound adapter (axum)
 - `crates/validator-jsonschema` / `crates/validator-shacl` — pluggable validators
 - `crates/io-memory` / `crates/io-http` — IO adapter implementations
@@ -28,7 +28,7 @@ Early development — architecture and port contracts are being established.
 
 ```sh
 cp .env.example .env
-# edit .env with your registry URL and adapter config
+# edit .env with your catalog source and adapter config
 cargo build --release
 cargo run -p api
 ```
@@ -49,10 +49,17 @@ All runtime configuration is via environment variables. See `.env.example` for t
 
 | Variable | Description |
 |----------|-------------|
-| `REGISTRY_URL_TEMPLATE` | URL template for resolving model artifacts |
+| `REGISTRY_CATALOG_URL` | URL to catalog JSON listing model/version/base_url entries |
 | `IO_ADAPTER_ID` | IO adapter to use (`memory`, `circularise`, etc.) |
 | `AUTH_JWKS_URL` | Keycloak JWKS endpoint for JWT validation |
 | `SERVER_PORT` | HTTP bind port (default `8080`) |
+
+Model operation endpoints remain:
+- `POST /models/{model}/versions/{version}:validate`
+- `POST /models/{model}/versions/{version}:create`
+- `POST /models/{model}/versions/{version}:query`
+
+These are dispatched internally through a single unified operation route.
 
 ## License
 

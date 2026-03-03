@@ -1,17 +1,15 @@
 use axum::{
     extract::{Path, State},
     http::HeaderMap,
+    response::{IntoResponse, Response},
     Json,
 };
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-use hex_core::{
-    domain::{
-        auth::SecurityContext,
-        model::{ModelId, ModelVersion},
-    },
-    ports::inbound::{record::RecordUseCase, validate::ValidateUseCase},
+use hex_core::domain::{
+    auth::SecurityContext,
+    model::{ModelId, ModelVersion},
 };
 
 use crate::{error::ApiError, AppState};
@@ -20,6 +18,54 @@ use crate::{error::ApiError, AppState};
 pub struct ModelPath {
     pub model: String,
     pub version: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ModelOperationPath {
+    pub model: String,
+    pub version: String,
+    pub operation: String,
+}
+
+/// Unified operation entrypoint:
+/// `POST /models/{model}/versions/{version}:{operation}`
+pub async fn dispatch(
+    State(state): State<Arc<AppState>>,
+    Path(path): Path<ModelOperationPath>,
+    headers: HeaderMap,
+    Json(body): Json<serde_json::Value>,
+) -> Result<Response, ApiError> {
+    let model_path = ModelPath {
+        model: path.model,
+        version: path.version,
+    };
+
+    match path.operation.as_str() {
+        "validate" => {
+            let request: ValidateRequest = serde_json::from_value(body)
+                .map_err(|e| ApiError::BadRequest(format!("invalid validate body: {e}")))?;
+            validate(State(state), Path(model_path), headers, Json(request))
+                .await
+                .map(IntoResponse::into_response)
+        }
+        "create" => {
+            let request: CreateRequest = serde_json::from_value(body)
+                .map_err(|e| ApiError::BadRequest(format!("invalid create body: {e}")))?;
+            create(State(state), Path(model_path), headers, Json(request))
+                .await
+                .map(IntoResponse::into_response)
+        }
+        "query" => {
+            let request: QueryRequest = serde_json::from_value(body)
+                .map_err(|e| ApiError::BadRequest(format!("invalid query body: {e}")))?;
+            query(State(state), Path(model_path), headers, Json(request))
+                .await
+                .map(IntoResponse::into_response)
+        }
+        other => Err(ApiError::BadRequest(format!(
+            "unsupported operation '{other}', expected one of: validate, create, query"
+        ))),
+    }
 }
 
 impl ModelPath {

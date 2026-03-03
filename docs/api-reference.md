@@ -176,11 +176,19 @@ All `/admin/*` endpoints require token validation and/or network-level access co
 
 ```json
 {
-  "refreshed_at": "1712345678",
+  "refreshed_at": "2026-03-03T18:12:45Z",
   "models_found": 3,
-  "errors": []
+  "errors": [
+    "model-a@1.0.0: artifact fetch failed for ... (https://...)"
+  ]
 }
 ```
+
+Notes:
+
+- `models_found` is the number of successfully indexed model/version entries after refresh.
+- `errors` contains per-entry resolution errors that did not prevent other entries from loading.
+- `refreshed_at` is an RFC3339 UTC timestamp.
 
 ---
 

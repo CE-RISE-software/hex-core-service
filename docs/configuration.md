@@ -9,8 +9,10 @@ See `.env.example` for a ready-to-copy template.
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `REGISTRY_MODE` | Yes | — | Must be `url` |
-| `REGISTRY_URL_TEMPLATE` | Yes | — | URL template with `{model}` and `{version}` placeholders |
+| `REGISTRY_MODE` | Yes | `catalog` | Registry backend mode. Current API wiring supports `catalog`. |
+| `REGISTRY_CATALOG_JSON` | Cond. | — | Inline JSON catalog content (string). |
+| `REGISTRY_CATALOG_FILE` | Cond. | — | Local path to catalog JSON file. |
+| `REGISTRY_CATALOG_URL` | Cond. | — | HTTP(S) URL to catalog JSON file. |
 | `REGISTRY_ALLOWED_HOSTS` | Recommended | — | Comma-separated allowed hostnames (e.g. `codeberg.org`) |
 | `REGISTRY_REQUIRE_HTTPS` | Recommended | `true` | Reject non-HTTPS registry URLs |
 | `REGISTRY_CACHE_ENABLED` | No | `false` | Enable artifact caching |
@@ -20,6 +22,63 @@ See `.env.example` for a ready-to-copy template.
 | `REGISTRY_ARTIFACT_MAP_SHACL` | No | `shacl.ttl` | Filename override for SHACL artifact |
 | `REGISTRY_ARTIFACT_MAP_OWL` | No | `owl.ttl` | Filename override for OWL artifact |
 | `REGISTRY_ARTIFACT_MAP_OPENAPI` | No | `openapi.json` | Filename override for OpenAPI artifact |
+
+### Catalog source selection
+
+Exactly one of the following should be set:
+
+- `REGISTRY_CATALOG_JSON`
+- `REGISTRY_CATALOG_FILE`
+- `REGISTRY_CATALOG_URL`
+
+If none is set, startup fails.
+
+### Catalog format
+
+Accepted JSON shapes:
+
+```json
+[
+  {
+    "model": "re-indicators-specification",
+    "version": "0.0.3",
+    "base_url": "https://codeberg.org/CE-RISE-models/re-indicators-specification/src/tag/pages-v0.0.3/generated/"
+  }
+]
+```
+
+or
+
+```json
+{
+  "models": [
+    {
+      "model": "re-indicators-specification",
+      "version": "0.0.3",
+      "base_url": "https://codeberg.org/CE-RISE-models/re-indicators-specification/src/tag/pages-v0.0.3/generated/"
+    }
+  ]
+}
+```
+
+Rules:
+
+- Multiple versions for the same model are allowed.
+- Duplicate `(model, version)` entries are rejected.
+- `base_url` (or `url`) must point to the artifact folder containing `route.json`.
+- If `model` or `version` is omitted, the registry attempts to infer them from CE-RISE Codeberg URL patterns.
+
+### Refresh behavior
+
+`POST /admin/registry/refresh` re-loads the catalog source each time:
+
+- `REGISTRY_CATALOG_URL`: re-downloads latest JSON from that URL.
+- `REGISTRY_CATALOG_FILE`: re-reads the file from disk.
+- `REGISTRY_CATALOG_JSON`: reuses in-memory inline catalog unless changed by process restart or runtime replacement API.
+
+The in-memory index swap is atomic.
+If the catalog cannot be loaded/parsed, refresh returns an error and the previous index remains active.
+If individual model entries fail artifact resolution, refresh succeeds with per-entry errors and loads only successful entries.
 
 ## IO Adapter
 

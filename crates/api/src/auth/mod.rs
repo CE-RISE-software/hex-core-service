@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 //! JWT validation middleware for the REST inbound adapter.
 //!
 //! Responsibilities (see AGENTS.md §10):

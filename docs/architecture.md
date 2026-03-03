@@ -29,8 +29,8 @@ The following diagram illustrates the hexagonal architecture pattern used in thi
               │                     │                      │
    ┌──────────▼──────┐  ┌───────────▼──────┐  ┌────────────▼──────┐
    │ ArtifactRegistry│  │  ValidatorPort   │  │  RecordStorePort  │
-   │  (URL registry) │  │  (SHACL / JSON   │  │  (HTTP IO adapter │
-   │                 │  │   Schema / OWL)  │  │   memory / db)    │
+   │ (catalog + URL  │  │  (SHACL / JSON   │  │  (HTTP IO adapter │
+   │   fetch helper) │  │   Schema / OWL)  │  │   memory / db)    │
    └─────────────────┘  └──────────────────┘  └───────────────────┘
 ```
 
@@ -59,7 +59,7 @@ These rules ensure that:
 - **Domain** (`crates/core/src/domain`) — entities, value objects, error types. No I/O.
 - **Ports** (`crates/core/src/ports`) — inbound use-case traits and outbound adapter traits.
 - **Use cases** (`crates/core/src/usecases`) — orchestration logic implementing inbound ports.
-- **Registry** (`crates/registry`) — URL-based artifact resolution implementing `ArtifactRegistryPort`.
+- **Registry** (`crates/registry`) — catalog-backed `ArtifactRegistryPort` with URL artifact fetching.
 - **REST adapter** (`crates/api`) — axum HTTP server implementing the inbound interface.
 - **IO adapters** (`crates/io-memory`, `crates/io-http`) — `RecordStorePort` implementations.
 - **Validators** (`crates/validator-jsonschema`, `crates/validator-shacl`) — `ValidatorPort` implementations.

@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use time::{format_description::well_known::Rfc3339, OffsetDateTime};
 use tokio::sync::RwLock;
 
 use hex_core::domain::model::{
@@ -79,10 +80,8 @@ impl RegistryIndex {
 }
 
 fn chrono_now() -> String {
-    // TODO: replace with chrono or time crate once added to workspace dependencies.
-    // Using std as a zero-dependency placeholder for now.
-    std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| format!("{}", d.as_secs()))
+    // RFC3339 UTC timestamp (e.g. 2026-03-03T15:04:05Z).
+    OffsetDateTime::now_utc()
+        .format(&Rfc3339)
         .unwrap_or_else(|_| "unknown".into())
 }

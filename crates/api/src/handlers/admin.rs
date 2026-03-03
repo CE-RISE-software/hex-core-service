@@ -2,8 +2,6 @@ use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
 use serde_json::json;
 use std::sync::Arc;
 
-use hex_core::ports::outbound::registry::ArtifactRegistryPort;
-
 use crate::AppState;
 
 pub async fn health() -> impl IntoResponse {

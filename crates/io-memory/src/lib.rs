@@ -14,7 +14,6 @@ use hex_core::ports::outbound::record_store::RecordStorePort;
 #[derive(Debug)]
 struct Entry {
     record: Record,
-    idempotency_key: String,
 }
 
 /// In-memory implementation of `RecordStorePort`.
@@ -60,13 +59,7 @@ impl RecordStorePort for MemoryRecordStore {
         idx.insert(idempotency_key.to_string(), id.0.clone());
 
         let mut store = self.store.write().await;
-        store.insert(
-            id.0.clone(),
-            Entry {
-                record,
-                idempotency_key: idempotency_key.to_string(),
-            },
-        );
+        store.insert(id.0.clone(), Entry { record });
 
         Ok(id)
     }

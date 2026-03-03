@@ -6,6 +6,8 @@ use hex_core::domain::{
 };
 use hex_core::ports::outbound::record_store::RecordStorePort;
 
+// Phase 7 scaffold: fields are populated now and consumed once HTTP methods are implemented.
+#[allow(dead_code)]
 pub struct HttpRecordStore {
     base_url: String,
     timeout_ms: u64,

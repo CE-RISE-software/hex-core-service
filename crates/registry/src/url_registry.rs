@@ -6,6 +6,7 @@ use hex_core::domain::{
 /// Resolves model artifacts from a remote URL registry using a configurable
 /// URL template of the form:
 ///   https://codeberg.org/CE-RISE-models/{model}/src/tag/pages-v{version}/generated/
+#[derive(Debug, Clone)]
 pub struct UrlArtifactRegistry {
     client: reqwest::Client,
     url_template: String,
@@ -16,6 +17,7 @@ pub struct UrlArtifactRegistry {
 
 /// Configurable filenames for each artifact type.
 /// Defaults match the values specified in AGENTS.md §7.2.
+#[derive(Debug, Clone)]
 pub struct ArtifactFileMap {
     pub route: String,
     pub schema: String,
@@ -63,6 +65,13 @@ impl UrlArtifactRegistry {
             .replace("{model}", &model.0)
             .replace("{version}", &version.0);
 
+        self.normalize_and_validate_base_url(url)
+    }
+
+    fn normalize_and_validate_base_url(&self, mut url: String) -> Result<String, RegistryError> {
+        if !url.ends_with('/') {
+            url.push('/');
+        }
         self.validate_url(&url)?;
         Ok(url)
     }
@@ -142,6 +151,19 @@ impl UrlArtifactRegistry {
         version: &ModelVersion,
     ) -> Result<ArtifactSet, RegistryError> {
         let base_url = self.build_base_url(model, version)?;
+        self.resolve_artifacts_from_base_url(model, version, &base_url)
+            .await
+    }
+
+    /// Resolve artifacts from a fully qualified base URL.
+    /// Used by catalog-backed registries that already provide explicit base URLs.
+    pub async fn resolve_artifacts_from_base_url(
+        &self,
+        model: &ModelId,
+        version: &ModelVersion,
+        base_url: &str,
+    ) -> Result<ArtifactSet, RegistryError> {
+        let base_url = self.normalize_and_validate_base_url(base_url.to_string())?;
 
         // route.json is required
         let route_text = self

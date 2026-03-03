@@ -390,17 +390,18 @@ impl ArtifactSet {
 }
 ```
 
-### URL Template Format
+### Catalog Entry URL Format
 
-Default template:
+Catalog entries must provide a concrete artifact base URL per `(model, version)`, for example:
 ```
 https://codeberg.org/CE-RISE-models/{model}/src/tag/pages-v{version}/generated/
 ```
 
-- `{model}` — Repository/model ID
-- `{version}` — Version without leading 'v'
+The running service reads catalog entries from one of:
 
-Override with `REGISTRY_URL_TEMPLATE`.
+- `REGISTRY_CATALOG_JSON`
+- `REGISTRY_CATALOG_FILE`
+- `REGISTRY_CATALOG_URL`
 
 ### Artifact Filename Defaults
 
@@ -424,7 +425,7 @@ Override via `REGISTRY_ARTIFACT_MAP_<KEY>` environment variables.
 
 ### Implementation Example
 
-- `crates/registry` — URL-based artifact registry (HTTP fetch)
+- `crates/registry` — catalog-backed artifact registry with URL fetch helper
 
 ---
 

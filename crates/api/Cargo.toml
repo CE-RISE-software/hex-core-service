@@ -11,6 +11,8 @@ path = "src/main.rs"
 [dependencies]
 hex-core     = { path = "../core" }
 hex-registry = { path = "../registry" }
+hex-io-memory = { path = "../io-memory" }
+hex-validator-jsonschema = { path = "../validator-jsonschema" }
 
 anyhow             = "1"
 async-trait        = { workspace = true }
@@ -25,9 +27,9 @@ tower              = { workspace = true }
 tower-http         = { workspace = true }
 tracing            = { workspace = true }
 tracing-subscriber = { workspace = true }
+reqwest            = { workspace = true }
 
 [dev-dependencies]
-hex-io-memory = { path = "../io-memory" }
 mockall       = { workspace = true }
 wiremock      = { workspace = true }
 tokio         = { workspace = true }
