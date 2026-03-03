@@ -1,10 +1,6 @@
 use async_trait::async_trait;
 
-use crate::domain::{
-    auth::SecurityContext,
-    error::EnricherError,
-    record::Record,
-};
+use crate::domain::{auth::SecurityContext, error::EnricherError, record::Record};
 
 #[async_trait]
 pub trait EnricherPort: Send + Sync {

@@ -75,6 +75,38 @@ mod tests {
     }
 
     #[test]
+    fn model_id_serde_round_trip() {
+        let id = ModelId("product-passport".into());
+        let json = serde_json::to_string(&id).expect("serialize ModelId");
+        let decoded: ModelId = serde_json::from_str(&json).expect("deserialize ModelId");
+        assert_eq!(decoded.0, "product-passport");
+    }
+
+    #[test]
+    fn model_version_display_and_serde_round_trip() {
+        let version = ModelVersion("1.2.3".into());
+        assert_eq!(version.to_string(), "1.2.3");
+
+        let json = serde_json::to_string(&version).expect("serialize ModelVersion");
+        let decoded: ModelVersion = serde_json::from_str(&json).expect("deserialize ModelVersion");
+        assert_eq!(decoded.0, "1.2.3");
+    }
+
+    #[test]
+    fn model_descriptor_serde_round_trip() {
+        let descriptor = ModelDescriptor {
+            id: ModelId("dp-record".into()),
+            version: ModelVersion("2.0.0".into()),
+        };
+        let json = serde_json::to_string(&descriptor).expect("serialize ModelDescriptor");
+        let decoded: ModelDescriptor =
+            serde_json::from_str(&json).expect("deserialize ModelDescriptor");
+
+        assert_eq!(decoded.id.0, "dp-record");
+        assert_eq!(decoded.version.0, "2.0.0");
+    }
+
+    #[test]
     fn artifact_set_is_routable_false_by_default() {
         assert!(!ArtifactSet::default().is_routable());
     }
@@ -84,5 +116,22 @@ mod tests {
         let mut a = ArtifactSet::default();
         a.route = Some(serde_json::json!({}));
         assert!(a.is_routable());
+    }
+
+    #[test]
+    fn refresh_summary_serde_round_trip() {
+        let summary = RefreshSummary {
+            refreshed_at: "2026-03-03T12:00:00Z".into(),
+            models_found: 2,
+            errors: vec!["model-a@1.0.0: missing route".into()],
+        };
+
+        let json = serde_json::to_string(&summary).expect("serialize RefreshSummary");
+        let decoded: RefreshSummary =
+            serde_json::from_str(&json).expect("deserialize RefreshSummary");
+
+        assert_eq!(decoded.refreshed_at, "2026-03-03T12:00:00Z");
+        assert_eq!(decoded.models_found, 2);
+        assert_eq!(decoded.errors.len(), 1);
     }
 }

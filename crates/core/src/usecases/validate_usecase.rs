@@ -12,16 +12,19 @@ use crate::ports::{
 };
 
 pub struct ValidateUseCaseImpl {
-    registry:   Arc<dyn ArtifactRegistryPort>,
+    registry: Arc<dyn ArtifactRegistryPort>,
     validators: Vec<Arc<dyn ValidatorPort>>,
 }
 
 impl ValidateUseCaseImpl {
     pub fn new(
-        registry:   Arc<dyn ArtifactRegistryPort>,
+        registry: Arc<dyn ArtifactRegistryPort>,
         validators: Vec<Arc<dyn ValidatorPort>>,
     ) -> Self {
-        Self { registry, validators }
+        Self {
+            registry,
+            validators,
+        }
     }
 }
 
@@ -29,8 +32,8 @@ impl ValidateUseCaseImpl {
 impl ValidateUseCase for ValidateUseCaseImpl {
     async fn validate(
         &self,
-        _ctx:    &SecurityContext,
-        model:   &ModelId,
+        _ctx: &SecurityContext,
+        model: &ModelId,
         version: &ModelVersion,
         payload: &serde_json::Value,
     ) -> Result<ValidationReport, CoreError> {
@@ -53,6 +56,10 @@ impl ValidateUseCase for ValidateUseCaseImpl {
         }
 
         // 4. Merge into a single report
-        Ok(ValidationReport::new(model.clone(), version.clone(), results))
+        Ok(ValidationReport::new(
+            model.clone(),
+            version.clone(),
+            results,
+        ))
     }
 }

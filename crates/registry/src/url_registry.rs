@@ -102,12 +102,15 @@ impl UrlArtifactRegistry {
     ) -> Result<Option<String>, RegistryError> {
         let url = format!("{}{}", base_url, filename);
 
-        let response = self.client.get(&url).send().await.map_err(|e| {
-            RegistryError::FetchFailed {
-                url: url.clone(),
-                reason: e.to_string(),
-            }
-        })?;
+        let response =
+            self.client
+                .get(&url)
+                .send()
+                .await
+                .map_err(|e| RegistryError::FetchFailed {
+                    url: url.clone(),
+                    reason: e.to_string(),
+                })?;
 
         if response.status() == reqwest::StatusCode::NOT_FOUND {
             return Ok(None);
@@ -120,10 +123,13 @@ impl UrlArtifactRegistry {
             });
         }
 
-        let text = response.text().await.map_err(|e| RegistryError::FetchFailed {
-            url: url.clone(),
-            reason: e.to_string(),
-        })?;
+        let text = response
+            .text()
+            .await
+            .map_err(|e| RegistryError::FetchFailed {
+                url: url.clone(),
+                reason: e.to_string(),
+            })?;
 
         Ok(Some(text))
     }
@@ -146,11 +152,9 @@ impl UrlArtifactRegistry {
                 version: version.0.clone(),
             })?;
 
-        let route = serde_json::from_str(&route_text).map_err(|e| {
-            RegistryError::FetchFailed {
-                url: format!("{}{}", base_url, self.artifact_map.route),
-                reason: format!("invalid JSON: {e}"),
-            }
+        let route = serde_json::from_str(&route_text).map_err(|e| RegistryError::FetchFailed {
+            url: format!("{}{}", base_url, self.artifact_map.route),
+            reason: format!("invalid JSON: {e}"),
         })?;
 
         // Optional artifacts

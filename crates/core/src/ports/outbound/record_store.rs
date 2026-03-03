@@ -13,11 +13,7 @@ pub trait RecordStorePort: Send + Sync {
         record: Record,
     ) -> Result<RecordId, StoreError>;
 
-    async fn read(
-        &self,
-        ctx: &SecurityContext,
-        id: &RecordId,
-    ) -> Result<Record, StoreError>;
+    async fn read(&self, ctx: &SecurityContext, id: &RecordId) -> Result<Record, StoreError>;
 
     async fn query(
         &self,

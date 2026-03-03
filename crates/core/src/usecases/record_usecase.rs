@@ -8,13 +8,15 @@ use crate::domain::{
 };
 use crate::ports::{
     inbound::record::RecordUseCase,
-    outbound::{record_store::RecordStorePort, registry::ArtifactRegistryPort, validator::ValidatorPort},
+    outbound::{
+        record_store::RecordStorePort, registry::ArtifactRegistryPort, validator::ValidatorPort,
+    },
 };
 
 pub struct RecordUseCaseImpl {
-    pub registry:   Arc<dyn ArtifactRegistryPort>,
+    pub registry: Arc<dyn ArtifactRegistryPort>,
     pub validators: Vec<Arc<dyn ValidatorPort>>,
-    pub store:      Arc<dyn RecordStorePort>,
+    pub store: Arc<dyn RecordStorePort>,
 }
 
 #[async_trait::async_trait]
@@ -59,7 +61,9 @@ impl RecordUseCase for RecordUseCaseImpl {
             payload,
         };
 
-        self.store.write(ctx, idempotency_key, record.clone()).await?;
+        self.store
+            .write(ctx, idempotency_key, record.clone())
+            .await?;
 
         Ok(record)
     }

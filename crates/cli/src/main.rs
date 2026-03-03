@@ -9,4 +9,3 @@
 fn main() {
     println!("hex-cli: not yet implemented");
 }
-

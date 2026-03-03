@@ -3,7 +3,9 @@ use std::sync::Arc;
 
 use tokio::sync::RwLock;
 
-use hex_core::domain::model::{ArtifactSet, ModelDescriptor, ModelId, ModelVersion, RefreshSummary};
+use hex_core::domain::model::{
+    ArtifactSet, ModelDescriptor, ModelId, ModelVersion, RefreshSummary,
+};
 
 /// Thread-safe in-memory index of resolved (model, version) → ArtifactSet.
 /// Swapped atomically on refresh via write lock.
@@ -25,7 +27,10 @@ impl RegistryIndex {
     /// Read a resolved ArtifactSet for the given (model, version).
     pub async fn get(&self, model: &ModelId, version: &ModelVersion) -> Option<ArtifactSet> {
         let guard = self.inner.read().await;
-        guard.entries.get(&(model.clone(), version.clone())).cloned()
+        guard
+            .entries
+            .get(&(model.clone(), version.clone()))
+            .cloned()
     }
 
     /// List all currently indexed (model, version) descriptors.
@@ -42,7 +47,10 @@ impl RegistryIndex {
     }
 
     /// Atomically replace the entire index with a new set of entries.
-    pub async fn swap(&self, new_entries: HashMap<(ModelId, ModelVersion), ArtifactSet>) -> RefreshSummary {
+    pub async fn swap(
+        &self,
+        new_entries: HashMap<(ModelId, ModelVersion), ArtifactSet>,
+    ) -> RefreshSummary {
         let models_found = new_entries.len();
         let mut guard = self.inner.write().await;
         guard.entries = new_entries;

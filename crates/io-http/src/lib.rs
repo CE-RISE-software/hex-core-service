@@ -33,11 +33,7 @@ impl RecordStorePort for HttpRecordStore {
         todo!("HTTP IO adapter: write")
     }
 
-    async fn read(
-        &self,
-        _ctx: &SecurityContext,
-        _id: &RecordId,
-    ) -> Result<Record, StoreError> {
+    async fn read(&self, _ctx: &SecurityContext, _id: &RecordId) -> Result<Record, StoreError> {
         todo!("HTTP IO adapter: read")
     }
 

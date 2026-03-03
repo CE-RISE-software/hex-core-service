@@ -170,4 +170,3 @@ pub fn not_found(msg: &str) -> Response {
 pub fn registry_error(e: hex_core::domain::error::RegistryError) -> Response {
     ApiError::Core(CoreError::Registry(e)).into_response()
 }
-
