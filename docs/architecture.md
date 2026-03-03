@@ -9,12 +9,12 @@ specific IO provider. All external interactions are mediated through port traits
 The following diagram illustrates the hexagonal architecture pattern used in this service:
 
 ```text
-                    ┌─────────────────────────────────────┐
+                    ┌──────────────────────────────────────┐
                     │           INBOUND ADAPTERS           │
                     │  REST API (axum)  │  CLI  │  Tests   │
                     └──────────┬──────────────────────────-┘
                                │  calls inbound port traits
-                    ┌──────────▼──────────────────────────-┐
+                    ┌──────────▼───────────────────────────-┐
                     │             CORE (crate)              │
                     │  ┌────────────────────────────────┐   │
                     │  │   Use Cases (implementations)  │   │
@@ -25,7 +25,7 @@ The following diagram illustrates the hexagonal architecture pattern used in thi
                     │               │  calls outbound port traits
                     └──────────────-│─────────────────────--┘
                                     │
-              ┌─────────────────────┼──────────────────────┐
+              ┌─────────────────────┼───────────────────────┐
               │                     │                       │
    ┌──────────▼──────┐  ┌───────────▼──────┐  ┌────────────▼──────┐
    │ ArtifactRegistry│  │  ValidatorPort   │  │  RecordStorePort  │
