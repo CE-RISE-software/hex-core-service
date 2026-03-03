@@ -39,3 +39,4 @@ coverage/
 *.tmp
 *.bak
 AGENTS.md
+AGENTS.backup-*.md

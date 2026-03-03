@@ -66,4 +66,8 @@ These rules ensure that:
 
 ## Key design decisions
 
-TODO: document ADRs here as decisions are made.
+### Use-case error behavior (implemented)
+
+- `ValidateUseCaseImpl` propagates validator execution failures as domain errors.
+- `RecordUseCaseImpl` blocks writes when merged validation report fails.
+- `RecordUseCaseImpl` also propagates validator execution failures (they are not ignored).
