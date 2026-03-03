@@ -9,7 +9,53 @@ The CE-RISE Hex Core Service follows a strict hexagonal (ports and adapters) arc
 The domain and use-case logic in `crates/core` has no knowledge of HTTP, databases, or any
 specific IO provider. All external interactions are mediated through port traits.
 
-See `AGENTS.md §4` for the authoritative architecture diagram and layer dependency rules.
+The following diagram illustrates the hexagonal architecture pattern used in this service:
+
+```text
+                    ┌─────────────────────────────────────┐
+                    │           INBOUND ADAPTERS           │
+                    │  REST API (axum)  │  CLI  │  Tests   │
+                    └──────────┬──────────────────────────-┘
+                               │  calls inbound port traits
+                    ┌──────────▼──────────────────────────-┐
+                    │             CORE (crate)              │
+                    │  ┌────────────────────────────────┐   │
+                    │  │   Use Cases (implementations)  │   │
+                    │  │  ValidateUseCase               │   │
+                    │  │  RecordUseCase                 │   │
+                    │  │  EnrichUseCase (opt.)          │   │
+                    │  └────────────┬───────────────────┘   │
+                    │               │  calls outbound port traits
+                    └──────────────-│─────────────────────--┘
+                                    │
+              ┌─────────────────────┼──────────────────────┐
+              │                     │                       │
+   ┌──────────▼──────┐  ┌───────────▼──────┐  ┌────────────▼──────┐
+   │ ArtifactRegistry│  │  ValidatorPort   │  │  RecordStorePort  │
+   │  (URL registry) │  │  (SHACL / JSON   │  │  (HTTP IO adapter │
+   │                 │  │   Schema / OWL)  │  │   memory / db)    │
+   └─────────────────┘  └──────────────────┘  └───────────────────┘
+```
+
+### Layer dependency rules
+
+The architecture enforces strict dependency constraints to maintain separation of concerns:
+
+| Layer | Allowed dependencies | Forbidden |
+|-------|---------------------|-----------|
+| `core/domain` | `std`, `serde`, `thiserror` | Everything else |
+| `core/ports` | `core/domain`, `async-trait` | Any I/O |
+| `core/usecases` | `core/domain`, `core/ports` | Any I/O, HTTP, DB |
+| `registry` | `core/ports`, `reqwest`, `tokio` | `core/usecases` |
+| `api` | `core/ports`, `axum`, `tower`, `jsonwebtoken` | Direct DB/IO |
+| `validator-*` | `core/ports`, validator-specific libs | HTTP, DB |
+| `io-*` | `core/ports`, adapter-specific libs | Core use cases |
+
+These rules ensure that:
+- The core domain remains pure and testable
+- Business logic has no coupling to infrastructure
+- Adapters can be swapped without affecting the core
+- Dependencies flow inward toward the domain
 
 ## Layers
 
