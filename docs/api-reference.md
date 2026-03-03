@@ -1,8 +1,5 @@
 # API Reference
 
-> Full API documentation is published at the project Pages site.
-> This file is the source; edit here, publish via CI.
-
 ---
 
 ## Base URL

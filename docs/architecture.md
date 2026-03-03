@@ -1,8 +1,5 @@
 # Architecture
 
-> Full architecture documentation is published to the project Pages site.
-> This file is the source; edit here, publish via CI.
-
 ## Overview
 
 The CE-RISE Hex Core Service follows a strict hexagonal (ports and adapters) architecture.
