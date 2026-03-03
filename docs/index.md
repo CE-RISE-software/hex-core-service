@@ -12,7 +12,7 @@ adapter contract, and operations documentation.
 </a>
 
 Funded by the European Union under Grant Agreement No. 101092281 — CE-RISE.  
-Views and opinions expressed are those of the author(s) only and do not necessarily reflect those of the European Union or the granting authority (HADEA).  
+Views and opinions expressed are those of the author(s) only and do not necessarily reflect those of the European Union or the granting authority (HADEA).
 Neither the European Union nor the granting authority can be held responsible for them.
 
 © 2026 CE-RISE consortium.  
