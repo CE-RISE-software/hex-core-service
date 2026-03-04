@@ -1,95 +1,149 @@
 {
-  "openapi": "3.0.3",
-  "info": {
-    "title": "CE-RISE Hex Core Service API",
-    "version": "0.1.0"
-  },
-  "paths": {
-    "/models": {
-      "get": {
-        "summary": "List available models",
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
+    "openapi": "3.0.3",
+    "info": {
+        "title": "CE-RISE Hex Core Service API",
+        "version": "0.1.0"
     },
-    "/models/{model}/versions/{version}:validate": {
-      "post": {
-        "summary": "Validate payload",
-        "responses": {
-          "200": {
-            "description": "Validation report"
-          }
+    "paths": {
+        "/models": {
+            "get": {
+                "summary": "List available models",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        },
+        "/models/{model}/versions/{version}:validate": {
+            "parameters": [
+                {
+                    "name": "model",
+                    "in": "path",
+                    "required": true,
+                    "schema": {
+                        "type": "string"
+                    }
+                },
+                {
+                    "name": "version",
+                    "in": "path",
+                    "required": true,
+                    "schema": {
+                        "type": "string"
+                    }
+                }
+            ],
+            "post": {
+                "summary": "Validate payload",
+                "responses": {
+                    "200": {
+                        "description": "Validation report"
+                    }
+                }
+            }
+        },
+        "/models/{model}/versions/{version}:create": {
+            "parameters": [
+                {
+                    "name": "model",
+                    "in": "path",
+                    "required": true,
+                    "schema": {
+                        "type": "string"
+                    }
+                },
+                {
+                    "name": "version",
+                    "in": "path",
+                    "required": true,
+                    "schema": {
+                        "type": "string"
+                    }
+                }
+            ],
+            "post": {
+                "summary": "Create record",
+                "responses": {
+                    "200": {
+                        "description": "Created/returned record"
+                    }
+                }
+            }
+        },
+        "/models/{model}/versions/{version}:query": {
+            "parameters": [
+                {
+                    "name": "model",
+                    "in": "path",
+                    "required": true,
+                    "schema": {
+                        "type": "string"
+                    }
+                },
+                {
+                    "name": "version",
+                    "in": "path",
+                    "required": true,
+                    "schema": {
+                        "type": "string"
+                    }
+                }
+            ],
+            "post": {
+                "summary": "Query records",
+                "responses": {
+                    "200": {
+                        "description": "Matching records"
+                    }
+                }
+            }
+        },
+        "/admin/health": {
+            "get": {
+                "summary": "Liveness probe",
+                "responses": {
+                    "200": {
+                        "description": "Alive"
+                    }
+                }
+            }
+        },
+        "/admin/ready": {
+            "get": {
+                "summary": "Readiness probe",
+                "responses": {
+                    "200": {
+                        "description": "Ready"
+                    },
+                    "503": {
+                        "description": "Not ready"
+                    }
+                }
+            }
+        },
+        "/admin/status": {
+            "get": {
+                "summary": "Runtime status",
+                "responses": {
+                    "200": {
+                        "description": "Status"
+                    }
+                }
+            }
+        },
+        "/admin/metrics": {
+            "get": {
+                "summary": "Prometheus metrics",
+                "responses": {
+                    "200": {
+                        "description": "Metrics text"
+                    },
+                    "404": {
+                        "description": "Metrics disabled"
+                    }
+                }
+            }
         }
-      }
-    },
-    "/models/{model}/versions/{version}:create": {
-      "post": {
-        "summary": "Create record",
-        "responses": {
-          "200": {
-            "description": "Created/returned record"
-          }
-        }
-      }
-    },
-    "/models/{model}/versions/{version}:query": {
-      "post": {
-        "summary": "Query records",
-        "responses": {
-          "200": {
-            "description": "Matching records"
-          }
-        }
-      }
-    },
-    "/admin/health": {
-      "get": {
-        "summary": "Liveness probe",
-        "responses": {
-          "200": {
-            "description": "Alive"
-          }
-        }
-      }
-    },
-    "/admin/ready": {
-      "get": {
-        "summary": "Readiness probe",
-        "responses": {
-          "200": {
-            "description": "Ready"
-          },
-          "503": {
-            "description": "Not ready"
-          }
-        }
-      }
-    },
-    "/admin/status": {
-      "get": {
-        "summary": "Runtime status",
-        "responses": {
-          "200": {
-            "description": "Status"
-          }
-        }
-      }
-    },
-    "/admin/metrics": {
-      "get": {
-        "summary": "Prometheus metrics",
-        "responses": {
-          "200": {
-            "description": "Metrics text"
-          },
-          "404": {
-            "description": "Metrics disabled"
-          }
-        }
-      }
     }
-  }
 }
