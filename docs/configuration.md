@@ -86,10 +86,15 @@ If individual model entries fail artifact resolution, refresh succeeds with per-
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `IO_ADAPTER_ID` | Yes | — | Adapter identifier (`memory`, `circularise`, `postgres`, …) |
+| `IO_ADAPTER_ID` | Yes | — | Adapter identifier (`memory` or `http` in current API wiring) |
 | `IO_ADAPTER_VERSION` | Yes | — | Adapter version (e.g. `v1`) |
 | `IO_ADAPTER_BASE_URL` | Cond. | — | Base URL for the HTTP IO Adapter Service |
 | `IO_ADAPTER_TIMEOUT_MS` | No | `5000` | Request timeout in milliseconds |
+
+Notes:
+
+- `IO_ADAPTER_ID=memory`: in-process memory store (dev/test).
+- `IO_ADAPTER_ID=http`: enables `crates/io-http`; requires `IO_ADAPTER_BASE_URL`.
 
 ## Auth
 

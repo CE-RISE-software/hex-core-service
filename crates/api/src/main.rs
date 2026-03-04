@@ -18,6 +18,7 @@ use hex_core::ports::{
 use hex_core::usecases::{
     record_usecase::RecordUseCaseImpl, validate_usecase::ValidateUseCaseImpl,
 };
+use hex_io_http::HttpRecordStore;
 use hex_io_memory::MemoryRecordStore;
 use hex_registry::catalog_registry::CatalogArtifactRegistry;
 use hex_validator_jsonschema::JsonSchemaValidator;
@@ -63,10 +64,17 @@ async fn main() -> Result<()> {
     let io_adapter_id = std::env::var("IO_ADAPTER_ID").unwrap_or_else(|_| "memory".into());
     let store: Arc<dyn RecordStorePort> = match io_adapter_id.as_str() {
         "memory" => Arc::new(MemoryRecordStore::new()),
+        "http" => {
+            let base_url = std::env::var("IO_ADAPTER_BASE_URL")
+                .context("missing IO_ADAPTER_BASE_URL for IO_ADAPTER_ID=http")?;
+            let timeout_ms = std::env::var("IO_ADAPTER_TIMEOUT_MS")
+                .ok()
+                .and_then(|v| v.parse::<u64>().ok())
+                .unwrap_or(5_000);
+            Arc::new(HttpRecordStore::new(base_url, timeout_ms))
+        }
         other => {
-            anyhow::bail!(
-                "unsupported IO_ADAPTER_ID={other}; only 'memory' is currently wired in hex-api"
-            )
+            anyhow::bail!("unsupported IO_ADAPTER_ID={other}; supported values: 'memory', 'http'")
         }
     };
 
