@@ -62,9 +62,10 @@ jobs:
 
             - name: Export OpenAPI artifact
               run: |
-                  # Extract the bundled openapi.json from the release binary output if present.
-                  # Adjust path if the build step produces it elsewhere.
-                  if [ -f target/release/openapi.json ]; then
-                    cp target/release/openapi.json openapi-${{ steps.tag.outputs.VERSION }}.json
-                  fi
-              continue-on-error: true
+                  cp crates/api/src/openapi.json openapi-${{ steps.tag.outputs.VERSION }}.json
+
+            - name: Upload OpenAPI artifact
+              uses: https://github.com/actions/upload-artifact@v4
+              with:
+                  name: openapi-${{ steps.tag.outputs.VERSION }}
+                  path: openapi-${{ steps.tag.outputs.VERSION }}.json
