@@ -5,7 +5,7 @@ on:
 
 jobs:
     cli-binaries:
-        runs-on: codeberg-tiny
+        runs-on: codeberg-medium
         strategy:
             fail-fast: false
             matrix:
