@@ -6,8 +6,101 @@ on:
             - "v*.*.*"
 
 jobs:
+    openapi-export:
+        runs-on: codeberg-tiny
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Extract version tag
+              id: tag
+              run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+            - name: Export OpenAPI artifacts
+              run: |
+                  set -euo pipefail
+                  mkdir -p dist/openapi
+                  cp crates/api/src/openapi.json "dist/openapi/openapi-${{ steps.tag.outputs.VERSION }}.json"
+                  cp crates/io-http/src/io_adapter_openapi.json "dist/openapi/io-adapter-openapi-${{ steps.tag.outputs.VERSION }}.json"
+
+            - name: Upload OpenAPI artifacts
+              uses: https://github.com/actions/upload-artifact@v4
+              with:
+                  name: openapi-${{ steps.tag.outputs.VERSION }}
+                  path: |
+                      dist/openapi/openapi-${{ steps.tag.outputs.VERSION }}.json
+                      dist/openapi/io-adapter-openapi-${{ steps.tag.outputs.VERSION }}.json
+
+    cli-binaries:
+        runs-on: codeberg-tiny
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - target: x86_64-unknown-linux-musl
+                      archive_suffix: linux-x86_64
+                      binary_suffix: ""
+                    - target: x86_64-apple-darwin
+                      archive_suffix: macos-x86_64
+                      binary_suffix: ""
+                    - target: x86_64-pc-windows-gnu
+                      archive_suffix: windows-x86_64
+                      binary_suffix: .exe
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Install Rust toolchain
+              uses: dtolnay/rust-toolchain@stable
+
+            - name: Install Zig
+              uses: goto-bus-stop/setup-zig@v2
+              with:
+                  version: 0.13.0
+
+            - name: Cache cargo registry
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      ~/.cargo/registry
+                      ~/.cargo/git
+                      target
+                  key: ${{ runner.os }}-${{ matrix.target }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+            - name: Install cargo-zigbuild
+              run: cargo install --locked cargo-zigbuild
+
+            - name: Extract version tag
+              id: tag
+              run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+            - name: Build hex-cli
+              run: cargo zigbuild --release -p hex-cli --target ${{ matrix.target }}
+              env:
+                  RUSTFLAGS: "-D warnings"
+
+            - name: Package archive
+              run: |
+                  set -euo pipefail
+                  BIN_NAME="hex-cli${{ matrix.binary_suffix }}"
+                  DIST_NAME="hex-cli-${{ steps.tag.outputs.VERSION }}-${{ matrix.archive_suffix }}"
+                  mkdir -p dist
+                  cp "target/${{ matrix.target }}/release/${BIN_NAME}" "dist/${BIN_NAME}"
+                  (cd dist && tar -czf "${DIST_NAME}.tar.gz" "${BIN_NAME}")
+
+            - name: Upload CLI archive
+              uses: https://github.com/actions/upload-artifact@v4
+              with:
+                  name: hex-cli-${{ steps.tag.outputs.VERSION }}-${{ matrix.archive_suffix }}
+                  path: |
+                      dist/*.tar.gz
+
     release:
         runs-on: codeberg-tiny
+        needs:
+            - openapi-export
+            - cli-binaries
 
         steps:
             - name: Checkout
@@ -60,12 +153,289 @@ jobs:
                   git push github ${{ steps.tag.outputs.VERSION }}
               continue-on-error: true
 
-            - name: Export OpenAPI artifact
-              run: |
-                  cp crates/api/src/openapi.json openapi-${{ steps.tag.outputs.VERSION }}.json
+    cli-distribution:
+        runs-on: codeberg-tiny
+        needs: cli-binaries
+        if: ${{ vars.CLI_DISTRIBUTION_ENABLED == 'true' }}
 
-            - name: Upload OpenAPI artifact
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Install Rust toolchain
+              uses: dtolnay/rust-toolchain@stable
+
+            - name: Extract version tag
+              id: tag
+              run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+            - name: Download CLI archives
+              uses: https://github.com/actions/download-artifact@v4
+              with:
+                  pattern: hex-cli-${{ steps.tag.outputs.VERSION }}-*
+                  path: dist/archives
+                  merge-multiple: true
+
+            - name: Compute archive checksums
+              run: |
+                  set -euo pipefail
+                  cd dist/archives
+                  sha256sum hex-cli-${{ steps.tag.outputs.VERSION }}-linux-x86_64.tar.gz > linux.sha256
+                  sha256sum hex-cli-${{ steps.tag.outputs.VERSION }}-macos-x86_64.tar.gz > macos.sha256
+                  sha256sum hex-cli-${{ steps.tag.outputs.VERSION }}-windows-x86_64.tar.gz > windows.sha256
+
+            - name: Publish hex-cli to crates.io (optional)
+              if: ${{ vars.CLI_CRATES_IO_PUBLISH == 'true' }}
+              run: cargo publish -p hex-cli --token "${{ secrets.CARGO_REGISTRY_TOKEN }}"
+
+            - name: Generate Homebrew and Scoop manifests
+              env:
+                  VERSION: ${{ steps.tag.outputs.VERSION }}
+                  RELEASE_BASE_URL: ${{ vars.CLI_RELEASE_BASE_URL }}
+              run: |
+                  set -euo pipefail
+                  mkdir -p dist/packages
+                  VERSION_NO_V="${VERSION#v}"
+                  BASE_URL="${RELEASE_BASE_URL:-https://github.com/${{ vars.GITHUB_MIRROR_REPO }}/releases/download/${VERSION}}"
+                  LINUX_SHA="$(cut -d' ' -f1 dist/archives/linux.sha256)"
+                  MACOS_SHA="$(cut -d' ' -f1 dist/archives/macos.sha256)"
+                  WINDOWS_SHA="$(cut -d' ' -f1 dist/archives/windows.sha256)"
+
+                  cat > dist/packages/hex-cli.rb <<EOF
+                  class HexCli < Formula
+                    desc "CLI for CE-RISE Hex Core Service"
+                    homepage "https://codeberg.org/CE-RISE-software/hex-core-service"
+                    version "${VERSION_NO_V}"
+                    on_macos do
+                      url "${BASE_URL}/hex-cli-${VERSION}-macos-x86_64.tar.gz"
+                      sha256 "${MACOS_SHA}"
+                    end
+                    on_linux do
+                      url "${BASE_URL}/hex-cli-${VERSION}-linux-x86_64.tar.gz"
+                      sha256 "${LINUX_SHA}"
+                    end
+                    def install
+                      bin.install "hex-cli"
+                    end
+                  end
+                  EOF
+
+                  cat > dist/packages/hex-cli.scoop.json <<EOF
+                  {
+                    "version": "${VERSION_NO_V}",
+                    "description": "CLI for CE-RISE Hex Core Service",
+                    "homepage": "https://codeberg.org/CE-RISE-software/hex-core-service",
+                    "license": "EUPL-1.2",
+                    "url": "${BASE_URL}/hex-cli-${VERSION}-windows-x86_64.tar.gz",
+                    "hash": "${WINDOWS_SHA}",
+                    "bin": "hex-cli.exe"
+                  }
+                  EOF
+
+            - name: Upload CLI distribution manifests
               uses: https://github.com/actions/upload-artifact@v4
               with:
+                  name: hex-cli-distribution-${{ steps.tag.outputs.VERSION }}
+                  path: |
+                      dist/packages/hex-cli.rb
+                      dist/packages/hex-cli.scoop.json
+
+    sdk-generate:
+        runs-on: codeberg-tiny
+        needs: openapi-export
+        if: ${{ vars.SDK_GENERATION_ENABLED == 'true' }}
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Extract version tag
+              id: tag
+              run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+            - name: Download OpenAPI artifacts
+              uses: https://github.com/actions/download-artifact@v4
+              with:
                   name: openapi-${{ steps.tag.outputs.VERSION }}
-                  path: openapi-${{ steps.tag.outputs.VERSION }}.json
+                  path: dist/openapi
+
+            - name: Generate TypeScript, Python, and Go SDKs
+              env:
+                  VERSION: ${{ steps.tag.outputs.VERSION }}
+              run: |
+                  set -euo pipefail
+                  mkdir -p dist/sdks
+                  VERSION_NO_V="${VERSION#v}"
+
+                  docker run --rm -v "$PWD:/local" openapitools/openapi-generator-cli:v7.10.0 generate \
+                    -g typescript-fetch \
+                    -i "/local/dist/openapi/openapi-${VERSION}.json" \
+                    -o /local/dist/sdks/typescript \
+                    --additional-properties=npmName=@ce-rise/hex-core-sdk,npmVersion="${VERSION_NO_V}",supportsES6=true,typescriptThreePlus=true
+
+                  docker run --rm -v "$PWD:/local" openapitools/openapi-generator-cli:v7.10.0 generate \
+                    -g python \
+                    -i "/local/dist/openapi/openapi-${VERSION}.json" \
+                    -o /local/dist/sdks/python \
+                    --additional-properties=packageName=ce_rise_hex_core_sdk,projectName=ce-rise-hex-core-sdk,packageVersion="${VERSION_NO_V}"
+
+                  docker run --rm -v "$PWD:/local" openapitools/openapi-generator-cli:v7.10.0 generate \
+                    -g go \
+                    -i "/local/dist/openapi/openapi-${VERSION}.json" \
+                    -o /local/dist/sdks/go \
+                    --additional-properties=packageName=hexcoresdk,enumClassPrefix=true,packageVersion="${VERSION_NO_V}"
+
+            - name: Upload generated SDKs
+              uses: https://github.com/actions/upload-artifact@v4
+              with:
+                  name: sdk-${{ steps.tag.outputs.VERSION }}
+                  path: |
+                      dist/sdks/typescript
+                      dist/sdks/python
+                      dist/sdks/go
+
+    sdk-publish-npm:
+        runs-on: codeberg-tiny
+        needs: sdk-generate
+        if: ${{ vars.SDK_PUBLISH_NPM_ENABLED == 'true' }}
+        steps:
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "20"
+                  registry-url: "https://registry.npmjs.org"
+
+            - name: Extract version tag
+              id: tag
+              run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+            - name: Download generated SDK artifact
+              uses: https://github.com/actions/download-artifact@v4
+              with:
+                  name: sdk-${{ steps.tag.outputs.VERSION }}
+                  path: dist/sdks
+
+            - name: Publish TypeScript SDK to npm
+              run: |
+                  set -euo pipefail
+                  cd dist/sdks/typescript
+                  npm publish --access public
+              env:
+                  NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+    sdk-publish-pypi:
+        runs-on: codeberg-tiny
+        needs: sdk-generate
+        if: ${{ vars.SDK_PUBLISH_PYPI_ENABLED == 'true' }}
+        steps:
+            - name: Setup Python
+              uses: actions/setup-python@v5
+              with:
+                  python-version: "3.11"
+
+            - name: Extract version tag
+              id: tag
+              run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+            - name: Download generated SDK artifact
+              uses: https://github.com/actions/download-artifact@v4
+              with:
+                  name: sdk-${{ steps.tag.outputs.VERSION }}
+                  path: dist/sdks
+
+            - name: Build and publish Python SDK to PyPI
+              run: |
+                  set -euo pipefail
+                  python -m pip install --upgrade pip build twine
+                  cd dist/sdks/python
+                  python -m build
+                  python -m twine upload dist/* --username __token__ --password "${PYPI_API_TOKEN}"
+              env:
+                  PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+
+    sdk-publish-go:
+        runs-on: codeberg-tiny
+        needs: sdk-generate
+        if: ${{ vars.SDK_PUBLISH_GO_ENABLED == 'true' }}
+        steps:
+            - name: Extract version tag
+              id: tag
+              run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+            - name: Download generated SDK artifact
+              uses: https://github.com/actions/download-artifact@v4
+              with:
+                  name: sdk-${{ steps.tag.outputs.VERSION }}
+                  path: dist/sdks
+
+            - name: Publish Go SDK to dedicated Go module repository
+              env:
+                  VERSION: ${{ steps.tag.outputs.VERSION }}
+                  GO_SDK_REPO: ${{ vars.GO_SDK_REPO }}
+                  GO_SDK_BRANCH: ${{ vars.GO_SDK_BRANCH }}
+                  GO_SDK_REPO_TOKEN: ${{ secrets.GO_SDK_REPO_TOKEN }}
+              run: |
+                  set -euo pipefail
+                  BRANCH="${GO_SDK_BRANCH:-main}"
+                  git clone "https://x-token:${GO_SDK_REPO_TOKEN}@github.com/${GO_SDK_REPO}.git" /tmp/go-sdk-repo
+                  cd /tmp/go-sdk-repo
+                  git checkout "${BRANCH}" || git checkout -b "${BRANCH}"
+                  find . -mindepth 1 -maxdepth 1 ! -name ".git" -exec rm -rf {} +
+                  cp -R "$GITHUB_WORKSPACE/dist/sdks/go/." .
+                  git config user.name "ce-rise-bot"
+                  git config user.email "ce-rise-bot@users.noreply.github.com"
+                  git add -A
+                  if git diff --cached --quiet; then
+                    echo "No Go SDK changes to publish"
+                    exit 0
+                  fi
+                  git commit -m "Release Go SDK ${VERSION}"
+                  git tag -a "${VERSION}" -m "Release ${VERSION}" || true
+                  git push origin "${BRANCH}"
+                  git push origin "${VERSION}" || true
+
+    io-http-client-stub-eval:
+        runs-on: codeberg-tiny
+        needs: openapi-export
+        if: ${{ vars.IO_HTTP_TYPED_CLIENT_EVAL_ENABLED == 'true' }}
+        steps:
+            - name: Extract version tag
+              id: tag
+              run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+            - name: Download OpenAPI artifacts
+              uses: https://github.com/actions/download-artifact@v4
+              with:
+                  name: openapi-${{ steps.tag.outputs.VERSION }}
+                  path: dist/openapi
+
+            - name: Generate typed Rust stub for IO adapter API
+              env:
+                  VERSION: ${{ steps.tag.outputs.VERSION }}
+              run: |
+                  set -euo pipefail
+                  mkdir -p dist/io-http-client
+                  VERSION_NO_V="${VERSION#v}"
+                  docker run --rm -v "$PWD:/local" openapitools/openapi-generator-cli:v7.10.0 generate \
+                    -g rust \
+                    -i "/local/dist/openapi/io-adapter-openapi-${VERSION}.json" \
+                    -o /local/dist/io-http-client/rust-client \
+                    --additional-properties=packageName=hex_io_adapter_client,packageVersion="${VERSION_NO_V}",library=reqwest
+
+                  cat > dist/io-http-client/evaluation.md <<EOF
+                  # IO HTTP typed client evaluation
+
+                  - Source spec: \`crates/io-http/src/io_adapter_openapi.json\`
+                  - Generator: \`openapi-generator-cli:v7.10.0\` (rust, reqwest)
+                  - Output: \`dist/io-http-client/rust-client\`
+                  - Status: Generated successfully in CI.
+                  - Next step: compare generated API surface with \`crates/io-http/src/lib.rs\` and decide whether to replace or keep hand-written adapter.
+                  EOF
+
+            - name: Upload IO adapter typed client evaluation
+              uses: https://github.com/actions/upload-artifact@v4
+              with:
+                  name: io-http-typed-client-eval-${{ steps.tag.outputs.VERSION }}
+                  path: |
+                      dist/io-http-client/rust-client
+                      dist/io-http-client/evaluation.md

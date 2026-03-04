@@ -575,7 +575,11 @@ dependencies = [
 name = "hex-cli"
 version = "0.1.0"
 dependencies = [
- "hex-core",
+ "anyhow",
+ "clap",
+ "jsonschema",
+ "reqwest",
+ "serde",
  "serde_json",
  "tokio",
  "tracing",

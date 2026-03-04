@@ -421,13 +421,16 @@ Releases are fully automated via CI/CD. To create a new release:
    ```
 3. **CI/CD automatically:**
    - Runs full test suite (including integration tests)
+   - Exports OpenAPI artifacts (`openapi.json` for API and IO adapter contract OpenAPI)
    - Builds release binary (`cargo build --release`)
+   - Builds `hex-cli` archives for Linux/macOS/Windows and uploads them as release-pipeline artifacts
+   - Optionally generates SDKs (TypeScript, Python, Go) from OpenAPI artifacts
    - Builds Docker image
    - Pushes image with version, SHA, and `latest` tags
    - Mirrors tag to GitHub
-   - GitHub Actions creates a GitHub Release
-   - Zenodo archives the release and mints a DOI
-   - Exports OpenAPI artifact to release assets
+   - Optionally publishes `hex-cli` to crates.io and generates Homebrew/Scoop manifests when enabled
+   - Optionally publishes generated SDKs to npm, PyPI, and a dedicated Go module repository
+   - Optionally generates typed Rust stubs from IO adapter OpenAPI for evaluation against hand-written `io-http` client
 
 ### Release Checklist
 
@@ -439,6 +442,45 @@ Before tagging a release:
 - [ ] Documentation reflects new features/changes
 - [ ] Breaking changes are clearly documented
 - [ ] Migration guide provided (if applicable)
+
+### Optional CLI Distribution Toggles
+
+The release workflow keeps CLI publishing disabled by default. Enable explicitly when needed:
+
+- `CLI_DISTRIBUTION_ENABLED=true`
+  - Activates optional CLI distribution job.
+  - Downloads built CLI archives and generates:
+    - `hex-cli.rb` (Homebrew formula)
+    - `hex-cli.scoop.json` (Scoop manifest)
+- `CLI_CRATES_IO_PUBLISH=true`
+  - Runs `cargo publish -p hex-cli`.
+  - Requires `CARGO_REGISTRY_TOKEN` secret.
+- `CLI_RELEASE_BASE_URL` (optional)
+  - Overrides archive base URL used inside generated manifests.
+  - Default: GitHub mirror release URL (`https://github.com/<mirror-repo>/releases/download/<tag>`).
+
+### Optional SDK Generation and Publication Toggles
+
+SDK generation and publishing are disabled by default. Enable explicitly in CI variables/secrets:
+
+- `SDK_GENERATION_ENABLED=true`
+  - Generates TypeScript (`typescript-fetch`), Python, and Go SDKs from API OpenAPI.
+  - Uploads generated SDKs as workflow artifacts.
+- `SDK_PUBLISH_NPM_ENABLED=true`
+  - Publishes TypeScript SDK to npm.
+  - Requires `NPM_TOKEN` secret.
+- `SDK_PUBLISH_PYPI_ENABLED=true`
+  - Builds and publishes Python SDK to PyPI.
+  - Requires `PYPI_API_TOKEN` secret.
+- `SDK_PUBLISH_GO_ENABLED=true`
+  - Pushes generated Go SDK to dedicated repository and tags with release version.
+  - Requires:
+    - `GO_SDK_REPO` variable (`owner/repo`)
+    - `GO_SDK_REPO_TOKEN` secret
+    - Optional `GO_SDK_BRANCH` variable (default `main`)
+- `IO_HTTP_TYPED_CLIENT_EVAL_ENABLED=true`
+  - Generates Rust typed stubs from `crates/io-http/src/io_adapter_openapi.json`.
+  - Uploads generated stub plus evaluation note as artifacts.
 
 ### Cross-Forge Mirroring
 
