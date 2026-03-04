@@ -13,7 +13,16 @@ jobs:
                   ref: main
 
             - name: Install Rust toolchain
-              uses: dtolnay/rust-toolchain@stable
+              run: |
+                  set -euo pipefail
+                  if ! command -v rustup >/dev/null 2>&1; then
+                    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+                    echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+                  fi
+                  rustup toolchain install stable --profile minimal
+                  rustup default stable
+                  rustc --version
+                  cargo --version
 
             - name: Setup Node.js
               uses: actions/setup-node@v4

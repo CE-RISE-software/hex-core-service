@@ -17,9 +17,16 @@ jobs:
               uses: actions/checkout@v4
 
             - name: Install Rust toolchain
-              uses: https://github.com/dtolnay/rust-toolchain@stable
-              with:
-                  components: rustfmt, clippy
+              run: |
+                  set -euo pipefail
+                  if ! command -v rustup >/dev/null 2>&1; then
+                    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+                    echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+                  fi
+                  rustup toolchain install stable --profile minimal --component rustfmt --component clippy
+                  rustup default stable
+                  rustc --version
+                  cargo --version
 
             - name: Cache cargo registry
               uses: https://github.com/actions/cache@v4
