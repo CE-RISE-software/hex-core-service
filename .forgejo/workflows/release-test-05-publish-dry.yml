@@ -19,6 +19,7 @@ jobs:
                     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
                     echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
                   fi
+                  . "$HOME/.cargo/env"
                   rustup toolchain install stable --profile minimal
                   rustup default stable
                   rustc --version
