@@ -553,6 +553,8 @@ dependencies = [
  "hex-io-memory",
  "hex-registry",
  "hex-validator-jsonschema",
+ "hex-validator-owl",
+ "hex-validator-shacl",
  "hyper",
  "jsonwebtoken",
  "mockall",
@@ -646,6 +648,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "hex-validator-owl"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "hex-core",
+ "serde_json",
+ "time",
+ "tokio",
+]
+
+[[package]]
 name = "hex-validator-shacl"
 version = "0.1.0"
 dependencies = [
@@ -653,6 +666,7 @@ dependencies = [
  "hex-core",
  "serde_json",
  "thiserror 1.0.69",
+ "time",
  "tokio",
  "tracing",
 ]

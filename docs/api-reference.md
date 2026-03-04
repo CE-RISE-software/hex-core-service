@@ -28,6 +28,8 @@ Authorization: Bearer <access_token>
 POST /models/{model}/versions/{version}:validate
 ```
 
+See [SHACL Validation](shacl-validation.md) for SHACL-specific execution details, supported constraints, and result semantics.
+
 **Headers**
 
 | Header | Required | Description |

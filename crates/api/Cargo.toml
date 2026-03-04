@@ -13,6 +13,8 @@ hex-core     = { path = "../core" }
 hex-registry = { path = "../registry" }
 hex-io-memory = { path = "../io-memory" }
 hex-validator-jsonschema = { path = "../validator-jsonschema" }
+hex-validator-shacl = { path = "../validator-shacl" }
+hex-validator-owl = { path = "../validator-owl" }
 
 anyhow             = "1"
 async-trait        = { workspace = true }

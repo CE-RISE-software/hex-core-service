@@ -6,6 +6,8 @@ This runbook provides operational procedures for running and maintaining the CE-
 
 - [Health and Readiness Checks](#health-and-readiness-checks)
 - [Registry Refresh Flow](#registry-refresh-flow)
+- [SHACL Validation Operations](#shacl-validation-operations)
+- [OWL Validation Operations](#owl-validation-operations)
 - [Metrics Reference](#metrics-reference)
 - [Troubleshooting Guide](#troubleshooting-guide)
 - [Common Issues](#common-issues)
@@ -169,6 +171,92 @@ Automatic refresh is **not** implemented by default. If needed, implement it as:
 - A sidecar container with a polling loop
 
 **Recommended Interval:** Every 5-15 minutes, depending on how frequently models are updated.
+
+---
+
+## SHACL Validation Operations
+
+Use this section together with [SHACL Validation](shacl-validation.md), which defines current validation scope and limits.
+
+### Preconditions
+
+- The model/version is present in the active registry index.
+- The model artifact folder contains `shacl.ttl`.
+- Registry refresh has been executed after catalog/artifact updates.
+
+### Quick Check
+
+1. Confirm model exists:
+   ```bash
+   curl http://localhost:8080/models
+   ```
+2. Confirm SHACL artifact is resolvable:
+   ```bash
+   curl http://localhost:8080/models/{model}/versions/{version}/shacl
+   ```
+3. Validate payload:
+   ```bash
+   curl -X POST http://localhost:8080/models/{model}/versions/{version}:validate \
+     -H "Authorization: Bearer <token>" \
+     -H "Content-Type: application/json" \
+     -d '{"payload":{...}}'
+   ```
+
+### Interpreting Results
+
+- `passed=true`: all executed validators passed.
+- `results[].kind="shacl"`: SHACL adapter result block.
+- `results[].violations[]`: path/message/severity entries for SHACL failures.
+
+### Common SHACL Failure Patterns
+
+- Invalid enum values (for example `record_scope` or `relation_type`)
+- Invalid timestamp format (non-RFC3339)
+- Wrong primitive type (integer/number mismatch)
+- Unexpected keys inside closed sections such as `applied_schemas[*]`
+
+---
+
+## OWL Validation Operations
+
+### Runtime Mode
+
+- OWL validation currently runs in embedded profile mode.
+- No external reasoner subprocess is required by default deployment.
+
+### Preconditions
+
+- The model/version is present in registry index.
+- The model artifact folder contains `owl.ttl`.
+- Registry refresh has been executed after artifact/catalog updates.
+
+### Quick Check
+
+1. Confirm OWL artifact resolves:
+   ```bash
+   curl http://localhost:8080/models/{model}/versions/{version}/owl
+   ```
+2. Submit payload to validate endpoint:
+   ```bash
+   curl -X POST http://localhost:8080/models/{model}/versions/{version}:validate \
+     -H "Authorization: Bearer <token>" \
+     -H "Content-Type: application/json" \
+     -d '{"payload":{...}}'
+   ```
+3. Confirm response contains OWL result block:
+   - `results[].kind == "Owl"`
+
+### Error Mapping
+
+- Missing `owl.ttl`: validator is skipped.
+- Invalid ontology artifact: validator initialization error.
+- Runtime failure in validator execution path: validator execution error.
+
+### Performance Notes
+
+- OWL artifacts can be larger than route/schema artifacts; refresh and in-memory footprint grow accordingly.
+- Keep OWL artifacts versioned and immutable where possible to avoid cache churn.
+- If OWL validation latency grows, monitor `validation_duration_seconds{validator="owl"}` and scale replicas before increasing request concurrency.
 
 ---
 

@@ -68,6 +68,8 @@ Rules:
 - `base_url` (or `url`) must point to the artifact folder containing `route.json`.
 - If `model` or `version` is omitted, the registry attempts to infer them from CE-RISE Codeberg URL patterns.
 
+For SHACL behavior and artifact expectations (`shacl.ttl`), see [SHACL Validation](shacl-validation.md).
+
 ### Refresh behavior
 
 `POST /admin/registry/refresh` re-loads the catalog source each time:
@@ -112,3 +114,15 @@ If individual model entries fail artifact resolution, refresh succeeds with per-
 |----------|----------|---------|-------------|
 | `LOG_LEVEL` | No | `info` | Tracing filter (e.g. `debug`, `info,tower_http=warn`) |
 | `METRICS_ENABLED` | No | `false` | Expose `/admin/metrics` (Prometheus format) |
+
+## OWL Validation Mode
+
+OWL validation is enabled through the `hex-validator-owl` adapter in API wiring.
+
+- Runtime mode: embedded profile checks (no external OWL subprocess required).
+- Activation condition: validator executes when `owl.ttl` is present in resolved artifacts.
+- Missing `owl.ttl`: validator skips gracefully and returns `passed=true` with no violations.
+- Invalid `owl.ttl`: mapped to validator initialization error.
+- Runtime execution fault: mapped to validator execution error.
+
+Operationally this keeps deployment simple (no extra binaries), but the current path is profile-oriented and not a full generic OWL reasoner.

@@ -21,7 +21,13 @@ pub struct ModelPath {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct ModelOperationPath {
+pub struct RawOperationPath {
+    pub model: String,
+    pub version_op: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SlashOperationPath {
     pub model: String,
     pub version: String,
     pub operation: String,
@@ -31,16 +37,57 @@ pub struct ModelOperationPath {
 /// `POST /models/{model}/versions/{version}:{operation}`
 pub async fn dispatch(
     State(state): State<Arc<AppState>>,
-    Path(path): Path<ModelOperationPath>,
+    Path(path): Path<RawOperationPath>,
     headers: HeaderMap,
     Json(body): Json<serde_json::Value>,
 ) -> Result<Response, ApiError> {
-    let model_path = ModelPath {
-        model: path.model,
-        version: path.version,
-    };
+    let (version, operation) = path.version_op.split_once(':').ok_or_else(|| {
+        ApiError::BadRequest(
+            "invalid version/operation segment; expected '{version}:{operation}'".into(),
+        )
+    })?;
 
-    match path.operation.as_str() {
+    dispatch_with_parts(
+        state,
+        path.model,
+        version.to_string(),
+        operation.to_string(),
+        headers,
+        body,
+    )
+    .await
+}
+
+/// Compatibility operation entrypoint:
+/// `POST /models/{model}/versions/{version}/{operation}`
+pub async fn dispatch_slash(
+    State(state): State<Arc<AppState>>,
+    Path(path): Path<SlashOperationPath>,
+    headers: HeaderMap,
+    Json(body): Json<serde_json::Value>,
+) -> Result<Response, ApiError> {
+    dispatch_with_parts(
+        state,
+        path.model,
+        path.version,
+        path.operation,
+        headers,
+        body,
+    )
+    .await
+}
+
+async fn dispatch_with_parts(
+    state: Arc<AppState>,
+    model: String,
+    version: String,
+    operation: String,
+    headers: HeaderMap,
+    body: serde_json::Value,
+) -> Result<Response, ApiError> {
+    let model_path = ModelPath { model, version };
+
+    match operation.as_str() {
         "validate" => {
             let request: ValidateRequest = serde_json::from_value(body)
                 .map_err(|e| ApiError::BadRequest(format!("invalid validate body: {e}")))?;

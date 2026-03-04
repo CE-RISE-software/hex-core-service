@@ -6,8 +6,7 @@
 //! Versioned artifact source (immutable tag):
 //!   https://codeberg.org/CE-RISE-models/dp-record-metadata/raw/tag/pages-v0.0.2/generated/
 //!
-//! All validation tests are `#[ignore]` until the SHACL engine is implemented in
-//! `crates/validator-shacl` (see AGENTS.md §18 Phase 6).
+//! These tests exercise the current SHACL validation path implementation.
 //!
 //! ## What these tests verify
 //!
@@ -96,7 +95,6 @@ fn no_shacl_artifact_skips_gracefully() {
 // ── Valid payloads ────────────────────────────────────────────────────────────
 
 #[tokio::test]
-#[ignore = "SHACL engine not yet implemented — see AGENTS.md §18 Phase 6"]
 async fn shacl_valid_minimal_product_passes() {
     // Minimal valid payload: only record_scope present.
     // Expected: sh:conforms true, no sh:ValidationResult nodes.
@@ -116,7 +114,6 @@ async fn shacl_valid_minimal_product_passes() {
 }
 
 #[tokio::test]
-#[ignore = "SHACL engine not yet implemented — see AGENTS.md §18 Phase 6"]
 async fn shacl_valid_minimal_material_passes() {
     let artifacts = artifact_set_with_shacl();
     let payload = serde_json::json!({ "record_scope": "material" });
@@ -134,7 +131,6 @@ async fn shacl_valid_minimal_material_passes() {
 }
 
 #[tokio::test]
-#[ignore = "SHACL engine not yet implemented — see AGENTS.md §18 Phase 6"]
 async fn shacl_valid_full_product_passes() {
     // Full product record with all optional fields populated.
     let artifacts = artifact_set_with_shacl();
@@ -156,7 +152,6 @@ async fn shacl_valid_full_product_passes() {
 }
 
 #[tokio::test]
-#[ignore = "SHACL engine not yet implemented — see AGENTS.md §18 Phase 6"]
 async fn shacl_valid_full_material_passes() {
     let artifacts = artifact_set_with_shacl();
     let payload: serde_json::Value = serde_json::from_str(include_str!(
@@ -177,7 +172,6 @@ async fn shacl_valid_full_material_passes() {
 }
 
 #[tokio::test]
-#[ignore = "SHACL engine not yet implemented — see AGENTS.md §18 Phase 6"]
 async fn shacl_empty_object_passes() {
     // All fields optional at root — empty object must pass.
     let artifacts = artifact_set_with_shacl();
@@ -198,7 +192,6 @@ async fn shacl_empty_object_passes() {
 // ── Invalid payloads ──────────────────────────────────────────────────────────
 
 #[tokio::test]
-#[ignore = "SHACL engine not yet implemented — see AGENTS.md §18 Phase 6"]
 async fn shacl_invalid_record_scope_fails() {
     // dpm:DPRecordMetadata shape: sh:in ("product" "material") for dpm:record_scope.
     // A value not in that set must produce a sh:Violation with sh:resultSeverity sh:Violation.
@@ -229,7 +222,6 @@ async fn shacl_invalid_record_scope_fails() {
 }
 
 #[tokio::test]
-#[ignore = "SHACL engine not yet implemented — see AGENTS.md §18 Phase 6"]
 async fn shacl_invalid_relation_type_fails() {
     // dpm:RelatedPassport shape: sh:in (...) for dpm:relation_type.
     // "transformed_by" is not in the allowed enum.
@@ -254,7 +246,6 @@ async fn shacl_invalid_relation_type_fails() {
 }
 
 #[tokio::test]
-#[ignore = "SHACL engine not yet implemented — see AGENTS.md §18 Phase 6"]
 async fn shacl_invalid_datetime_fails() {
     // void:Dataset shape: sh:datatype xsd:dateTime for dcterms:created.
     // A plain string that is not an ISO 8601 datetime must fail.
@@ -278,7 +269,6 @@ async fn shacl_invalid_datetime_fails() {
 }
 
 #[tokio::test]
-#[ignore = "SHACL engine not yet implemented — see AGENTS.md §18 Phase 6"]
 async fn shacl_invalid_sequence_order_type_fails() {
     // dpm:CompositionInfo shape: sh:datatype xsd:integer for dpm:sequence_order.
     // A string value must fail the datatype constraint.
@@ -306,7 +296,6 @@ async fn shacl_invalid_sequence_order_type_fails() {
 }
 
 #[tokio::test]
-#[ignore = "SHACL engine not yet implemented — see AGENTS.md §18 Phase 6"]
 async fn shacl_invalid_completeness_percentage_type_fails() {
     // dpm:SchemaUsage shape: sh:datatype xsd:float for dpm:completeness_percentage.
     // A string value must fail.
@@ -334,7 +323,6 @@ async fn shacl_invalid_completeness_percentage_type_fails() {
 }
 
 #[tokio::test]
-#[ignore = "SHACL engine not yet implemented — see AGENTS.md §18 Phase 6"]
 async fn shacl_closed_shape_rejects_extra_properties() {
     // All shapes use sh:closed true.
     // An unknown property inside AppliedSchema must produce a sh:Violation.
@@ -362,7 +350,6 @@ async fn shacl_closed_shape_rejects_extra_properties() {
 // ── Violation detail assertions ───────────────────────────────────────────────
 
 #[tokio::test]
-#[ignore = "SHACL engine not yet implemented — see AGENTS.md §18 Phase 6"]
 async fn shacl_violation_has_path_and_message() {
     // Verify that violations are populated with useful path and message fields,
     // not just a boolean flag — important for API error reporting (§9.4).

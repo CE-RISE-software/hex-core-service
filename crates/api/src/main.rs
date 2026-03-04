@@ -21,6 +21,8 @@ use hex_core::usecases::{
 use hex_io_memory::MemoryRecordStore;
 use hex_registry::catalog_registry::CatalogArtifactRegistry;
 use hex_validator_jsonschema::JsonSchemaValidator;
+use hex_validator_owl::OwlValidator;
+use hex_validator_shacl::ShaclValidator;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -47,7 +49,11 @@ async fn main() -> Result<()> {
     tracing::info!(%addr, "starting hex-core-service");
 
     let registry = build_registry_from_env().await?;
-    let validators: Vec<Arc<dyn ValidatorPort>> = vec![Arc::new(JsonSchemaValidator)];
+    let validators: Vec<Arc<dyn ValidatorPort>> = vec![
+        Arc::new(JsonSchemaValidator),
+        Arc::new(ShaclValidator::new()),
+        Arc::new(OwlValidator::new()),
+    ];
 
     let validate_use_case: Arc<dyn ValidateUseCase> = Arc::new(ValidateUseCaseImpl::new(
         registry.clone(),

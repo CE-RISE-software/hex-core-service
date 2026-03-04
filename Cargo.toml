@@ -5,6 +5,7 @@ members = [
     "crates/api",
     "crates/validator-jsonschema",
     "crates/validator-shacl",
+    "crates/validator-owl",
     "crates/io-memory",
     "crates/io-http",
     "crates/cli",
@@ -55,5 +56,6 @@ hex-core                 = { path = "crates/core" }
 hex-registry             = { path = "crates/registry" }
 hex-validator-jsonschema = { path = "crates/validator-jsonschema" }
 hex-validator-shacl      = { path = "crates/validator-shacl" }
+hex-validator-owl        = { path = "crates/validator-owl" }
 hex-io-memory            = { path = "crates/io-memory" }
 hex-io-http              = { path = "crates/io-http" }

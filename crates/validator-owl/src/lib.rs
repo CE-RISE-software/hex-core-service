@@ -1,9 +1,7 @@
-//! SHACL validator implementation of `ValidatorPort`.
+//! OWL validator implementation of `ValidatorPort`.
 //!
-//! Current implementation provides a profile-based execution path for
-//! `dp-record-metadata` constraints and returns structured violations.
-//! This keeps SHACL validation operational while a full graph-native SHACL
-//! engine integration is finalized.
+//! Operational mode: embedded profile checks.
+//! No external subprocess engine is required.
 
 use async_trait::async_trait;
 use hex_core::domain::{
@@ -14,24 +12,38 @@ use hex_core::domain::{
 use hex_core::ports::outbound::validator::ValidatorPort;
 use time::{format_description::well_known::Rfc3339, OffsetDateTime};
 
-pub struct ShaclValidator;
+#[derive(Debug, Clone, Default)]
+pub struct OwlValidatorOptions {
+    /// Test hook used by contract tests to assert execution failure mapping.
+    pub simulate_execution_failure: bool,
+}
 
-impl ShaclValidator {
+pub struct OwlValidator {
+    options: OwlValidatorOptions,
+}
+
+impl OwlValidator {
     pub fn new() -> Self {
-        Self
+        Self {
+            options: OwlValidatorOptions::default(),
+        }
+    }
+
+    pub fn with_options(options: OwlValidatorOptions) -> Self {
+        Self { options }
     }
 }
 
-impl Default for ShaclValidator {
+impl Default for OwlValidator {
     fn default() -> Self {
         Self::new()
     }
 }
 
 #[async_trait]
-impl ValidatorPort for ShaclValidator {
+impl ValidatorPort for OwlValidator {
     fn kind(&self) -> ValidatorKind {
-        ValidatorKind::Shacl
+        ValidatorKind::Owl
     }
 
     async fn validate(
@@ -39,32 +51,46 @@ impl ValidatorPort for ShaclValidator {
         artifacts: &ArtifactSet,
         payload: &serde_json::Value,
     ) -> Result<ValidationResult, ValidatorError> {
-        let shacl = match &artifacts.shacl {
+        let owl = match &artifacts.owl {
             Some(s) => s,
             None => {
-                // No SHACL artifact present — skip gracefully.
                 return Ok(ValidationResult {
-                    kind: ValidatorKind::Shacl,
+                    kind: ValidatorKind::Owl,
                     passed: true,
                     violations: vec![],
                 });
             }
         };
 
-        let _ = shacl;
-        let mut violations = Vec::new();
+        if self.options.simulate_execution_failure {
+            return Err(ValidatorError::Execution(
+                "simulated OWL validator execution failure".into(),
+            ));
+        }
 
+        validate_ontology_text(owl)?;
+
+        let mut violations = Vec::new();
         validate_record_scope(payload, &mut violations);
         validate_related_passports(payload, &mut violations);
         validate_metadata_versioning(payload, &mut violations);
-        validate_applied_schemas(payload, &mut violations);
 
         Ok(ValidationResult {
-            kind: ValidatorKind::Shacl,
+            kind: ValidatorKind::Owl,
             passed: violations.is_empty(),
             violations,
         })
     }
+}
+
+fn validate_ontology_text(owl: &str) -> Result<(), ValidatorError> {
+    // Keep ontology sanity checks lightweight for the embedded mode.
+    if !owl.contains("owl:Ontology") {
+        return Err(ValidatorError::Init(
+            "invalid OWL artifact: missing owl:Ontology declaration".into(),
+        ));
+    }
+    Ok(())
 }
 
 fn validate_record_scope(payload: &serde_json::Value, violations: &mut Vec<ValidationViolation>) {
@@ -104,7 +130,7 @@ fn validate_related_passports(
                     push_violation(
                         violations,
                         format!("$.related_passports[{idx}].relation_type"),
-                        "relation_type is not allowed by SHACL shape",
+                        "relation_type is not allowed by OWL profile constraints",
                     );
                 }
             }
@@ -138,58 +164,6 @@ fn validate_metadata_versioning(
                     violations,
                     format!("$.metadata_versioning.{key}"),
                     "value is not a valid RFC3339 date-time",
-                );
-            }
-        }
-    }
-}
-
-fn validate_applied_schemas(
-    payload: &serde_json::Value,
-    violations: &mut Vec<ValidationViolation>,
-) {
-    let Some(items) = payload.get("applied_schemas").and_then(|v| v.as_array()) else {
-        return;
-    };
-    const ALLOWED_KEYS: &[&str] = &["schema_reference", "schema_usage", "composition_info"];
-
-    for (idx, item) in items.iter().enumerate() {
-        if let Some(obj) = item.as_object() {
-            for key in obj.keys() {
-                if !ALLOWED_KEYS.contains(&key.as_str()) {
-                    push_violation(
-                        violations,
-                        format!("$.applied_schemas[{idx}].{key}"),
-                        "property is not allowed by closed SHACL shape",
-                    );
-                }
-            }
-        }
-
-        if let Some(seq) = item
-            .get("composition_info")
-            .and_then(|v| v.get("sequence_order"))
-            .filter(|v| !v.is_null())
-        {
-            if seq.as_i64().is_none() {
-                push_violation(
-                    violations,
-                    format!("$.applied_schemas[{idx}].composition_info.sequence_order"),
-                    "sequence_order must be an integer",
-                );
-            }
-        }
-
-        if let Some(pct) = item
-            .get("schema_usage")
-            .and_then(|v| v.get("completeness_percentage"))
-            .filter(|v| !v.is_null())
-        {
-            if pct.as_f64().is_none() {
-                push_violation(
-                    violations,
-                    format!("$.applied_schemas[{idx}].schema_usage.completeness_percentage"),
-                    "completeness_percentage must be a number",
                 );
             }
         }

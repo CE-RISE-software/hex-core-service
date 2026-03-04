@@ -12,8 +12,12 @@ pub fn build(state: Arc<AppState>) -> Router {
     Router::new()
         // ── Model operations ──────────────────────────────────────────────────
         .route(
-            "/models/{model}/versions/{version}:{operation}",
+            "/models/{model}/versions/{version_op}",
             post(operations::dispatch),
+        )
+        .route(
+            "/models/{model}/versions/{version}/{operation}",
+            post(operations::dispatch_slash),
         )
         // ── Public introspection ──────────────────────────────────────────────
         .route("/models", get(models::list))
@@ -50,6 +54,8 @@ pub fn build(state: Arc<AppState>) -> Router {
 mod tests {
     use crate::AppState;
     use axum::{
+        extract::{Path, State},
+        http::HeaderMap,
         routing::{get, post},
         Router,
     };
@@ -66,7 +72,9 @@ mod tests {
     use hex_io_memory::MemoryRecordStore;
     use hex_registry::catalog_registry::CatalogArtifactRegistry;
     use hex_validator_jsonschema::JsonSchemaValidator;
-    use std::{path::Path, sync::Arc};
+    use hex_validator_owl::OwlValidator;
+    use hex_validator_shacl::ShaclValidator;
+    use std::{path::Path as FsPath, sync::Arc};
     use wiremock::{
         matchers::{method, path},
         Mock, MockServer, ResponseTemplate,
@@ -83,7 +91,7 @@ mod tests {
         (format!("http://{addr}"), handle)
     }
 
-    async fn write_catalog(path: &Path, json: &str) {
+    async fn write_catalog(path: &FsPath, json: &str) {
         tokio::fs::write(path, json)
             .await
             .expect("write catalog file");
@@ -214,5 +222,215 @@ mod tests {
 
         server_handle.abort();
         let _ = tokio::fs::remove_file(&catalog_path).await;
+    }
+
+    #[tokio::test]
+    async fn validate_endpoint_executes_shacl_with_real_dp_record_metadata_shapes() {
+        let server = MockServer::start().await;
+        let route = ResponseTemplate::new(200).set_body_string(r#"{"op":"validate"}"#);
+        let shacl = ResponseTemplate::new(200).set_body_string(include_str!(
+            "../../validator-shacl/tests/fixtures/dp_record_metadata/shacl.ttl"
+        ));
+        let not_found = ResponseTemplate::new(404);
+
+        let model = "dp-record-metadata";
+        let version = "0.0.2";
+        let base = format!("/CE-RISE-models/{model}/src/tag/pages-v{version}/generated");
+
+        Mock::given(method("GET"))
+            .and(path(format!("{base}/route.json")))
+            .respond_with(route)
+            .mount(&server)
+            .await;
+        Mock::given(method("GET"))
+            .and(path(format!("{base}/shacl.ttl")))
+            .respond_with(shacl)
+            .mount(&server)
+            .await;
+        // Keep JSON Schema absent so SHACL is the effective validator for this test.
+        for filename in ["schema.json", "owl.ttl", "openapi.json"] {
+            Mock::given(method("GET"))
+                .and(path(format!("{base}/{filename}")))
+                .respond_with(not_found.clone())
+                .mount(&server)
+                .await;
+        }
+
+        let catalog = format!(
+            r#"{{
+  "models": [
+    {{
+      "model": "{model}",
+      "version": "{version}",
+      "base_url": "{}/CE-RISE-models/{model}/src/tag/pages-v{version}/generated/"
+    }}
+  ]
+}}"#,
+            server.uri()
+        );
+        let registry = CatalogArtifactRegistry::from_json_catalog(&catalog, vec![], false)
+            .await
+            .expect("registry init");
+        let registry: Arc<dyn ArtifactRegistryPort> = Arc::new(registry);
+
+        let validators: Vec<Arc<dyn ValidatorPort>> = vec![
+            Arc::new(JsonSchemaValidator),
+            Arc::new(ShaclValidator::new()),
+        ];
+        let validate_use_case: Arc<dyn ValidateUseCase> = Arc::new(ValidateUseCaseImpl::new(
+            registry.clone(),
+            validators.clone(),
+        ));
+        let store: Arc<dyn RecordStorePort> = Arc::new(MemoryRecordStore::new());
+        let record_use_case: Arc<dyn RecordUseCase> = Arc::new(RecordUseCaseImpl {
+            registry: registry.clone(),
+            validators,
+            store,
+        });
+
+        let state = Arc::new(AppState {
+            registry,
+            validate_use_case,
+            record_use_case,
+        });
+        let response = crate::handlers::operations::validate(
+            State(state),
+            Path(crate::handlers::operations::ModelPath {
+                model: model.to_string(),
+                version: version.to_string(),
+            }),
+            HeaderMap::new(),
+            axum::Json(crate::handlers::operations::ValidateRequest {
+                payload: serde_json::json!({ "record_scope": "document" }),
+            }),
+        )
+        .await
+        .expect("validate handler should succeed");
+
+        assert!(!response.passed);
+        let results = response.results.as_array().expect("results array");
+        let shacl_result = results
+            .iter()
+            .find(|r| r["kind"] == "Shacl")
+            .expect("SHACL validator result must be present");
+        assert_eq!(shacl_result["passed"], false);
+        assert!(
+            shacl_result["violations"]
+                .as_array()
+                .expect("violations array")
+                .iter()
+                .any(|v| v["path"]
+                    .as_str()
+                    .unwrap_or_default()
+                    .contains("record_scope")),
+            "expected SHACL violation on record_scope"
+        );
+    }
+
+    #[tokio::test]
+    async fn validate_endpoint_executes_owl_when_owl_artifact_is_present() {
+        let server = MockServer::start().await;
+        let route = ResponseTemplate::new(200).set_body_string(r#"{"op":"validate"}"#);
+        let owl = ResponseTemplate::new(200).set_body_string(
+            r#"
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix ex: <https://example.org/> .
+ex:Ontology a owl:Ontology .
+"#,
+        );
+        let not_found = ResponseTemplate::new(404);
+
+        let model = "owl-test-model";
+        let version = "1.0.0";
+        let base = format!("/CE-RISE-models/{model}/src/tag/pages-v{version}/generated");
+
+        Mock::given(method("GET"))
+            .and(path(format!("{base}/route.json")))
+            .respond_with(route)
+            .mount(&server)
+            .await;
+        Mock::given(method("GET"))
+            .and(path(format!("{base}/owl.ttl")))
+            .respond_with(owl)
+            .mount(&server)
+            .await;
+        for filename in ["schema.json", "shacl.ttl", "openapi.json"] {
+            Mock::given(method("GET"))
+                .and(path(format!("{base}/{filename}")))
+                .respond_with(not_found.clone())
+                .mount(&server)
+                .await;
+        }
+
+        let catalog = format!(
+            r#"{{
+  "models": [
+    {{
+      "model": "{model}",
+      "version": "{version}",
+      "base_url": "{}/CE-RISE-models/{model}/src/tag/pages-v{version}/generated/"
+    }}
+  ]
+}}"#,
+            server.uri()
+        );
+        let registry = CatalogArtifactRegistry::from_json_catalog(&catalog, vec![], false)
+            .await
+            .expect("registry init");
+        let registry: Arc<dyn ArtifactRegistryPort> = Arc::new(registry);
+
+        let validators: Vec<Arc<dyn ValidatorPort>> = vec![
+            Arc::new(JsonSchemaValidator),
+            Arc::new(ShaclValidator::new()),
+            Arc::new(OwlValidator::new()),
+        ];
+        let validate_use_case: Arc<dyn ValidateUseCase> = Arc::new(ValidateUseCaseImpl::new(
+            registry.clone(),
+            validators.clone(),
+        ));
+        let store: Arc<dyn RecordStorePort> = Arc::new(MemoryRecordStore::new());
+        let record_use_case: Arc<dyn RecordUseCase> = Arc::new(RecordUseCaseImpl {
+            registry: registry.clone(),
+            validators,
+            store,
+        });
+
+        let state = Arc::new(AppState {
+            registry,
+            validate_use_case,
+            record_use_case,
+        });
+        let response = crate::handlers::operations::validate(
+            State(state),
+            Path(crate::handlers::operations::ModelPath {
+                model: model.to_string(),
+                version: version.to_string(),
+            }),
+            HeaderMap::new(),
+            axum::Json(crate::handlers::operations::ValidateRequest {
+                payload: serde_json::json!({ "record_scope": "document" }),
+            }),
+        )
+        .await
+        .expect("validate handler should succeed");
+
+        assert!(!response.passed);
+        let results = response.results.as_array().expect("results array");
+        let owl_result = results
+            .iter()
+            .find(|r| r["kind"] == "Owl")
+            .expect("OWL validator result must be present");
+        assert_eq!(owl_result["passed"], false);
+        assert!(
+            owl_result["violations"]
+                .as_array()
+                .expect("violations array")
+                .iter()
+                .any(|v| v["path"]
+                    .as_str()
+                    .unwrap_or_default()
+                    .contains("record_scope")),
+            "expected OWL violation on record_scope"
+        );
     }
 }
