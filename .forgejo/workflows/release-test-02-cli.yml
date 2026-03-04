@@ -38,6 +38,12 @@ jobs:
                   rustc --version
                   cargo --version
 
+            - name: Install target toolchain
+              run: |
+                  set -euo pipefail
+                  . "$HOME/.cargo/env"
+                  rustup target add ${{ matrix.target }}
+
             - name: Install Zig
               run: |
                   set -euo pipefail
