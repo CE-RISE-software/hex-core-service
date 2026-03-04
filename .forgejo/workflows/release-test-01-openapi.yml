@@ -22,7 +22,7 @@ jobs:
                   cp crates/io-http/src/io_adapter_openapi.json "dist/openapi/io-adapter-openapi-${VERSION}.json"
 
             - name: Upload OpenAPI artifacts
-              uses: https://github.com/actions/upload-artifact@v4
+              uses: https://github.com/actions/upload-artifact@v3
               with:
                   name: release-test-openapi-${{ github.run_number }}
                   path: dist/openapi/*

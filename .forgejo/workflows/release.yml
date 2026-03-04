@@ -24,7 +24,7 @@ jobs:
                   cp crates/io-http/src/io_adapter_openapi.json "dist/openapi/io-adapter-openapi-${{ steps.tag.outputs.VERSION }}.json"
 
             - name: Upload OpenAPI artifacts
-              uses: https://github.com/actions/upload-artifact@v4
+              uses: https://github.com/actions/upload-artifact@v3
               with:
                   name: openapi-${{ steps.tag.outputs.VERSION }}
                   path: |
@@ -90,7 +90,7 @@ jobs:
                   (cd dist && tar -czf "${DIST_NAME}.tar.gz" "${BIN_NAME}")
 
             - name: Upload CLI archive
-              uses: https://github.com/actions/upload-artifact@v4
+              uses: https://github.com/actions/upload-artifact@v3
               with:
                   name: hex-cli-${{ steps.tag.outputs.VERSION }}-${{ matrix.archive_suffix }}
                   path: |
@@ -163,12 +163,31 @@ jobs:
               id: tag
               run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
-            - name: Download CLI archives
-              uses: https://github.com/actions/download-artifact@v4
+            - name: Download Linux CLI archive
+              uses: https://github.com/actions/download-artifact@v3
               with:
-                  pattern: hex-cli-${{ steps.tag.outputs.VERSION }}-*
-                  path: dist/archives
-                  merge-multiple: true
+                  name: hex-cli-${{ steps.tag.outputs.VERSION }}-linux-x86_64
+                  path: dist/archives/linux
+
+            - name: Download macOS CLI archive
+              uses: https://github.com/actions/download-artifact@v3
+              with:
+                  name: hex-cli-${{ steps.tag.outputs.VERSION }}-macos-x86_64
+                  path: dist/archives/macos
+
+            - name: Download Windows CLI archive
+              uses: https://github.com/actions/download-artifact@v3
+              with:
+                  name: hex-cli-${{ steps.tag.outputs.VERSION }}-windows-x86_64
+                  path: dist/archives/windows
+
+            - name: Normalize archive layout
+              run: |
+                  set -euo pipefail
+                  mkdir -p dist/archives
+                  cp dist/archives/linux/*.tar.gz dist/archives/
+                  cp dist/archives/macos/*.tar.gz dist/archives/
+                  cp dist/archives/windows/*.tar.gz dist/archives/
 
             - name: Compute archive checksums
               run: |
@@ -231,7 +250,7 @@ jobs:
                   EOF
 
             - name: Upload CLI distribution manifests
-              uses: https://github.com/actions/upload-artifact@v4
+              uses: https://github.com/actions/upload-artifact@v3
               with:
                   name: hex-cli-distribution-${{ steps.tag.outputs.VERSION }}
                   path: |
@@ -252,7 +271,7 @@ jobs:
               run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
             - name: Download OpenAPI artifacts
-              uses: https://github.com/actions/download-artifact@v4
+              uses: https://github.com/actions/download-artifact@v3
               with:
                   name: openapi-${{ steps.tag.outputs.VERSION }}
                   path: dist/openapi
@@ -284,7 +303,7 @@ jobs:
                     --additional-properties=packageName=hexcoresdk,enumClassPrefix=true,packageVersion="${VERSION_NO_V}"
 
             - name: Upload generated SDKs
-              uses: https://github.com/actions/upload-artifact@v4
+              uses: https://github.com/actions/upload-artifact@v3
               with:
                   name: sdk-${{ steps.tag.outputs.VERSION }}
                   path: |
@@ -308,7 +327,7 @@ jobs:
               run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
             - name: Download generated SDK artifact
-              uses: https://github.com/actions/download-artifact@v4
+              uses: https://github.com/actions/download-artifact@v3
               with:
                   name: sdk-${{ steps.tag.outputs.VERSION }}
                   path: dist/sdks
@@ -336,7 +355,7 @@ jobs:
               run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
             - name: Download generated SDK artifact
-              uses: https://github.com/actions/download-artifact@v4
+              uses: https://github.com/actions/download-artifact@v3
               with:
                   name: sdk-${{ steps.tag.outputs.VERSION }}
                   path: dist/sdks
@@ -361,7 +380,7 @@ jobs:
               run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
             - name: Download generated SDK artifact
-              uses: https://github.com/actions/download-artifact@v4
+              uses: https://github.com/actions/download-artifact@v3
               with:
                   name: sdk-${{ steps.tag.outputs.VERSION }}
                   path: dist/sdks
@@ -402,7 +421,7 @@ jobs:
               run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
             - name: Download OpenAPI artifacts
-              uses: https://github.com/actions/download-artifact@v4
+              uses: https://github.com/actions/download-artifact@v3
               with:
                   name: openapi-${{ steps.tag.outputs.VERSION }}
                   path: dist/openapi
@@ -431,7 +450,7 @@ jobs:
                   EOF
 
             - name: Upload IO adapter typed client evaluation
-              uses: https://github.com/actions/upload-artifact@v4
+              uses: https://github.com/actions/upload-artifact@v3
               with:
                   name: io-http-typed-client-eval-${{ steps.tag.outputs.VERSION }}
                   path: |
