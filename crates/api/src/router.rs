@@ -1,11 +1,15 @@
 use std::sync::Arc;
+use std::time::Instant;
 
 use axum::{
+    body::Body,
     extract::DefaultBodyLimit,
+    http::Request,
     middleware,
     routing::{get, post},
     Router,
 };
+use axum::{extract::State, middleware::Next, response::Response};
 
 use crate::auth::{self, AuthProviderHandle};
 use crate::handlers::{admin, models, operations};
@@ -48,13 +52,16 @@ pub fn build(state: Arc<AppState>, authn: AuthProviderHandle) -> Router {
         // ── OpenAPI self-description ──────────────────────────────────────────
         .route("/openapi.json", get(models::openapi_spec))
         // ── Admin ─────────────────────────────────────────────────────────────
-        .route("/admin/health", get(admin::health))
         .route("/admin/ready", get(admin::ready))
         .route("/admin/status", get(admin::status))
         .route("/admin/metrics", get(admin::metrics))
         .route("/admin/registry/refresh", post(admin::registry_refresh))
         .route("/admin/config", get(admin::config))
         .route("/admin/cache/clear", post(admin::cache_clear))
+        .layer(middleware::from_fn_with_state(
+            state.clone(),
+            track_and_log_metrics,
+        ))
         .layer(DefaultBodyLimit::max(request_max_bytes))
         .layer(middleware::from_fn_with_state(authn, auth::require_auth));
 
@@ -64,8 +71,35 @@ pub fn build(state: Arc<AppState>, authn: AuthProviderHandle) -> Router {
         .with_state(state)
 }
 
+async fn track_and_log_metrics(
+    State(state): State<Arc<AppState>>,
+    req: Request<Body>,
+    next: Next,
+) -> Response {
+    state.metrics.on_request_start();
+
+    let method = req.method().clone();
+    let path = req.uri().path().to_string();
+    let auth_header = if req.headers().contains_key("authorization") {
+        "<redacted>"
+    } else {
+        "<none>"
+    };
+    let started = Instant::now();
+    tracing::info!(%method, %path, authorization = %auth_header, "request_started");
+
+    let response = next.run(req).await;
+    let duration_ms = started.elapsed().as_millis() as u64;
+    let status = response.status().as_u16();
+    state.metrics.on_request_end(status, duration_ms);
+    tracing::info!(%method, %path, status, duration_ms, "request_finished");
+
+    response
+}
+
 #[cfg(test)]
 mod tests {
+    use crate::metrics::ApiMetrics;
     use crate::AppState;
     use axum::{
         extract::{Extension, Path, State},
@@ -192,6 +226,9 @@ mod tests {
             registry,
             validate_use_case,
             record_use_case,
+            started_at: std::time::Instant::now(),
+            metrics_enabled: false,
+            metrics: Arc::new(ApiMetrics::new()),
         });
         let app = Router::new()
             .route("/models", get(crate::handlers::models::list))
@@ -317,6 +354,9 @@ mod tests {
             registry,
             validate_use_case,
             record_use_case,
+            started_at: std::time::Instant::now(),
+            metrics_enabled: false,
+            metrics: Arc::new(ApiMetrics::new()),
         });
         let response = crate::handlers::operations::validate(
             State(state),
@@ -425,6 +465,9 @@ ex:Ontology a owl:Ontology .
             registry,
             validate_use_case,
             record_use_case,
+            started_at: std::time::Instant::now(),
+            metrics_enabled: false,
+            metrics: Arc::new(ApiMetrics::new()),
         });
         let response = crate::handlers::operations::validate(
             State(state),

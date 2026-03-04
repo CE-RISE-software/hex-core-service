@@ -29,12 +29,11 @@ pub async fn list(State(state): State<Arc<AppState>>) -> Response {
 
 /// GET /openapi.json
 pub async fn openapi_spec() -> Response {
-    // TODO: serve the generated or hand-authored OpenAPI document.
-    (
-        StatusCode::NOT_IMPLEMENTED,
-        Json(serde_json::json!({ "message": "OpenAPI spec not yet available" })),
-    )
-        .into_response()
+    Response::builder()
+        .status(StatusCode::OK)
+        .header("content-type", "application/json; charset=utf-8")
+        .body(axum::body::Body::from(include_str!("../openapi.json")))
+        .unwrap()
 }
 
 /// GET /models/{model}/versions/{version}/schema

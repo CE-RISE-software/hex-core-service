@@ -135,6 +135,10 @@ pub enum StoreError {
 - `crates/io-memory` — In-memory HashMap (for testing and local development)
 - `crates/io-http` — HTTP client to external IO Adapter Service
 
+Versioned IO Adapter OpenAPI contract (current source of truth for HTTP paths/methods):
+
+- `crates/io-http/src/io_adapter_openapi.json`
+
 ---
 
 ## ValidatorPort (Validator Contract)

@@ -8,6 +8,9 @@ use hex_core::ports::outbound::record_store::RecordStorePort;
 use serde::Deserialize;
 use std::time::Duration;
 
+const IO_ADAPTER_PATH_WRITE: &str = "/records";
+const IO_ADAPTER_PATH_QUERY: &str = "/records/query";
+
 pub struct HttpRecordStore {
     base_url: String,
     client: reqwest::Client,
@@ -71,7 +74,7 @@ impl RecordStorePort for HttpRecordStore {
         idempotency_key: &str,
         record: Record,
     ) -> Result<RecordId, StoreError> {
-        let url = self.endpoint("/records");
+        let url = self.endpoint(IO_ADAPTER_PATH_WRITE);
         let req = self
             .client
             .post(url)
@@ -94,7 +97,7 @@ impl RecordStorePort for HttpRecordStore {
     }
 
     async fn read(&self, ctx: &SecurityContext, id: &RecordId) -> Result<Record, StoreError> {
-        let url = self.endpoint(&format!("/records/{}", id.0));
+        let url = self.endpoint(&format!("{}/{}", IO_ADAPTER_PATH_WRITE, id.0));
         let req = self.with_auth(self.client.get(url), ctx);
         let resp = req.send().await.map_err(Self::map_transport_error)?;
         let status = resp.status();
@@ -113,7 +116,7 @@ impl RecordStorePort for HttpRecordStore {
         ctx: &SecurityContext,
         filter: serde_json::Value,
     ) -> Result<Vec<Record>, StoreError> {
-        let url = self.endpoint("/records/query");
+        let url = self.endpoint(IO_ADAPTER_PATH_QUERY);
         let req = self.with_auth(
             self.client
                 .post(url)
@@ -184,7 +187,7 @@ mod tests {
         let record = sample_record();
 
         Mock::given(method("POST"))
-            .and(path("/records"))
+            .and(path(IO_ADAPTER_PATH_WRITE))
             .and(header("authorization", "Bearer token-123"))
             .and(header("idempotency-key", "idem-1"))
             .and(body_json(
@@ -209,7 +212,7 @@ mod tests {
         let store = HttpRecordStore::new(server.uri(), 5_000);
 
         Mock::given(method("POST"))
-            .and(path("/records"))
+            .and(path(IO_ADAPTER_PATH_WRITE))
             .respond_with(ResponseTemplate::new(409))
             .mount(&server)
             .await;
@@ -262,7 +265,7 @@ mod tests {
         let record = sample_record();
 
         Mock::given(method("POST"))
-            .and(path("/records/query"))
+            .and(path(IO_ADAPTER_PATH_QUERY))
             .and(header("authorization", "Bearer token-123"))
             .and(body_json(serde_json::json!({
                 "filter": {"model": "model-a"}
@@ -279,5 +282,37 @@ mod tests {
             .expect("query succeeds");
         assert_eq!(records.len(), 1);
         assert_eq!(records[0].id.0, "rec-1");
+    }
+
+    #[test]
+    fn openapi_contract_matches_io_http_paths_and_methods() {
+        const IO_ADAPTER_PATH_READ_TEMPLATE: &str = "/records/{id}";
+        let spec: serde_json::Value = serde_json::from_str(include_str!("io_adapter_openapi.json"))
+            .expect("openapi json must be valid");
+        let paths = spec["paths"].as_object().expect("paths object");
+
+        let write = paths
+            .get(IO_ADAPTER_PATH_WRITE)
+            .expect("openapi must define /records");
+        assert!(
+            write.get("post").is_some(),
+            "openapi /records must expose POST"
+        );
+
+        let read = paths
+            .get(IO_ADAPTER_PATH_READ_TEMPLATE)
+            .expect("openapi must define /records/{id}");
+        assert!(
+            read.get("get").is_some(),
+            "openapi /records/{{id}} must expose GET"
+        );
+
+        let query = paths
+            .get(IO_ADAPTER_PATH_QUERY)
+            .expect("openapi must define /records/query");
+        assert!(
+            query.get("post").is_some(),
+            "openapi /records/query must expose POST"
+        );
     }
 }

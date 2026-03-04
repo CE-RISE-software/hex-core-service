@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::time::Instant;
 
 use anyhow::{Context, Result};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
@@ -7,6 +8,7 @@ mod auth;
 mod dto;
 mod error;
 mod handlers;
+mod metrics;
 mod router;
 
 use hex_core::ports::{
@@ -24,12 +26,16 @@ use hex_registry::catalog_registry::CatalogArtifactRegistry;
 use hex_validator_jsonschema::JsonSchemaValidator;
 use hex_validator_owl::OwlValidator;
 use hex_validator_shacl::ShaclValidator;
+use metrics::ApiMetrics;
 
 #[derive(Clone)]
 pub struct AppState {
     pub registry: Arc<dyn ArtifactRegistryPort>,
     pub validate_use_case: Arc<dyn ValidateUseCase>,
     pub record_use_case: Arc<dyn RecordUseCase>,
+    pub started_at: Instant,
+    pub metrics_enabled: bool,
+    pub metrics: Arc<ApiMetrics>,
 }
 
 #[tokio::main]
@@ -46,6 +52,11 @@ async fn main() -> Result<()> {
         .unwrap_or(8080);
 
     let addr = format!("{host}:{port}");
+    let metrics_enabled = std::env::var("METRICS_ENABLED")
+        .ok()
+        .and_then(|v| v.parse::<bool>().ok())
+        .unwrap_or(false);
+    let metrics = Arc::new(ApiMetrics::new());
 
     tracing::info!(%addr, "starting hex-core-service");
 
@@ -88,6 +99,9 @@ async fn main() -> Result<()> {
         registry,
         validate_use_case,
         record_use_case,
+        started_at: Instant::now(),
+        metrics_enabled,
+        metrics,
     });
 
     let authn = auth::build_provider_from_env()
@@ -108,20 +122,22 @@ async fn build_registry_from_env() -> Result<Arc<dyn ArtifactRegistryPort>> {
         );
     }
 
-    let allowed_hosts = std::env::var("REGISTRY_ALLOWED_HOSTS")
-        .ok()
-        .map(|v| {
-            v.split(',')
-                .map(str::trim)
-                .filter(|s| !s.is_empty())
-                .map(str::to_string)
-                .collect::<Vec<_>>()
-        })
-        .unwrap_or_default();
+    let allowed_hosts_raw =
+        std::env::var("REGISTRY_ALLOWED_HOSTS").context("missing REGISTRY_ALLOWED_HOSTS")?;
+    let allowed_hosts = allowed_hosts_raw
+        .split(',')
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(str::to_string)
+        .collect::<Vec<_>>();
+    if allowed_hosts.is_empty() {
+        anyhow::bail!("REGISTRY_ALLOWED_HOSTS must contain at least one host");
+    }
+
     let require_https = std::env::var("REGISTRY_REQUIRE_HTTPS")
-        .ok()
-        .and_then(|v| v.parse::<bool>().ok())
-        .unwrap_or(true);
+        .context("missing REGISTRY_REQUIRE_HTTPS")?
+        .parse::<bool>()
+        .context("invalid REGISTRY_REQUIRE_HTTPS (expected true/false)")?;
 
     let registry = if let Ok(catalog_json) = std::env::var("REGISTRY_CATALOG_JSON") {
         CatalogArtifactRegistry::from_json_catalog(&catalog_json, allowed_hosts, require_https)

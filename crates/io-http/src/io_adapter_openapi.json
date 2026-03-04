@@ -1,0 +1,44 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Hex IO Adapter Service API",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/records": {
+      "post": {
+        "summary": "Write record",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/records/{id}": {
+      "get": {
+        "summary": "Read record by id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/records/query": {
+      "post": {
+        "summary": "Query records"
+      }
+    }
+  }
+}

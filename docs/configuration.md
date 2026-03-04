@@ -13,8 +13,8 @@ See `.env.example` for a ready-to-copy template.
 | `REGISTRY_CATALOG_JSON` | Cond. | — | Inline JSON catalog content (string). |
 | `REGISTRY_CATALOG_FILE` | Cond. | — | Local path to catalog JSON file. |
 | `REGISTRY_CATALOG_URL` | Cond. | — | HTTP(S) URL to catalog JSON file. |
-| `REGISTRY_ALLOWED_HOSTS` | Recommended | — | Comma-separated allowed hostnames (e.g. `codeberg.org`) |
-| `REGISTRY_REQUIRE_HTTPS` | Recommended | `true` | Reject non-HTTPS registry URLs |
+| `REGISTRY_ALLOWED_HOSTS` | Yes | — | Comma-separated allowed hostnames (e.g. `codeberg.org`) |
+| `REGISTRY_REQUIRE_HTTPS` | Yes | — | `true`/`false`; startup fails if missing or invalid |
 | `REGISTRY_CACHE_ENABLED` | No | `false` | Enable artifact caching |
 | `REGISTRY_CACHE_TTL_SECS` | No | `300` | Cache TTL in seconds |
 | `REGISTRY_ARTIFACT_MAP_ROUTE` | No | `route.json` | Filename override for route artifact |
