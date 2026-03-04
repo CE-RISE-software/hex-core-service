@@ -1,44 +1,89 @@
 {
-  "openapi": "3.0.3",
-  "info": {
-    "title": "Hex IO Adapter Service API",
-    "version": "1.0.0"
-  },
-  "paths": {
-    "/records": {
-      "post": {
-        "summary": "Write record",
-        "parameters": [
-          {
-            "name": "Idempotency-Key",
-            "in": "header",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ]
-      }
+    "openapi": "3.0.3",
+    "info": {
+        "title": "Hex IO Adapter Service API",
+        "version": "1.0.0"
     },
-    "/records/{id}": {
-      "get": {
-        "summary": "Read record by id",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
+    "paths": {
+        "/records": {
+            "post": {
+                "summary": "Write record",
+                "parameters": [
+                    {
+                        "name": "Idempotency-Key",
+                        "in": "header",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Record written"
+                    },
+                    "400": {
+                        "description": "Invalid request"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "409": {
+                        "description": "Idempotency conflict"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
             }
-          }
-        ]
-      }
-    },
-    "/records/query": {
-      "post": {
-        "summary": "Query records"
-      }
+        },
+        "/records/{id}": {
+            "get": {
+                "summary": "Read record by id",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Record found"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "404": {
+                        "description": "Record not found"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/records/query": {
+            "post": {
+                "summary": "Query records",
+                "responses": {
+                    "200": {
+                        "description": "Query result set"
+                    },
+                    "400": {
+                        "description": "Invalid query filter"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        }
     }
-  }
 }
