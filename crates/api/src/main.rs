@@ -82,7 +82,10 @@ async fn main() -> Result<()> {
         record_use_case,
     });
 
-    let app = router::build(state);
+    let authn = auth::build_provider_from_env()
+        .map_err(|e| anyhow::anyhow!("invalid auth configuration: {e:?}"))?;
+
+    let app = router::build(state, authn);
     let listener = tokio::net::TcpListener::bind(&addr).await?;
     tracing::info!(%addr, "listening");
     axum::serve(listener, app).await?;

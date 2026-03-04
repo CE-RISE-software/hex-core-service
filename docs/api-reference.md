@@ -12,7 +12,9 @@ https://<host>/
 
 ## Authentication
 
-All endpoints except `/admin/health` require a valid Keycloak-issued Bearer token:
+All endpoints except `/admin/health` require authentication.
+Default mode is bearer JWT validation (`AUTH_MODE=jwt_jwks`), with optional forwarded-identity mode (`AUTH_MODE=forward_auth`) and isolated dry-run mode (`AUTH_MODE=none` with explicit unsafe flag).
+See [Authentication](authentication.md) for mode selection, header mapping, and deployment patterns.
 
 ```
 Authorization: Bearer <access_token>

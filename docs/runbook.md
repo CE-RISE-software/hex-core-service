@@ -6,6 +6,7 @@ This runbook provides operational procedures for running and maintaining the CE-
 
 - [Health and Readiness Checks](#health-and-readiness-checks)
 - [Registry Refresh Flow](#registry-refresh-flow)
+- [Authentication Operations](#authentication-operations)
 - [SHACL Validation Operations](#shacl-validation-operations)
 - [OWL Validation Operations](#owl-validation-operations)
 - [Metrics Reference](#metrics-reference)
@@ -171,6 +172,32 @@ Automatic refresh is **not** implemented by default. If needed, implement it as:
 - A sidecar container with a polling loop
 
 **Recommended Interval:** Every 5-15 minutes, depending on how frequently models are updated.
+
+---
+
+## Authentication Operations
+
+For full authentication architecture and integration patterns, see [Authentication](authentication.md).
+
+### Runtime Auth Mode Check
+
+Confirm active auth mode in environment:
+
+```bash
+echo "$AUTH_MODE"
+```
+
+Expected values:
+
+- `jwt_jwks`
+- `forward_auth`
+- `none` (isolated non-production only)
+
+### Quick Validation Path Checks
+
+- `jwt_jwks`: verify `AUTH_JWKS_URL`, `AUTH_ISSUER`, `AUTH_AUDIENCE` are set and reachable.
+- `forward_auth`: verify gateway injects configured subject/roles/scopes headers.
+- `none`: verify `AUTH_ALLOW_INSECURE_NONE=true` is explicitly set.
 
 ---
 

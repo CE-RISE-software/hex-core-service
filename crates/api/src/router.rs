@@ -1,15 +1,23 @@
 use std::sync::Arc;
 
 use axum::{
+    extract::DefaultBodyLimit,
+    middleware,
     routing::{get, post},
     Router,
 };
 
+use crate::auth::{self, AuthProviderHandle};
 use crate::handlers::{admin, models, operations};
 use crate::AppState;
 
-pub fn build(state: Arc<AppState>) -> Router {
-    Router::new()
+pub fn build(state: Arc<AppState>, authn: AuthProviderHandle) -> Router {
+    let request_max_bytes = std::env::var("SERVER_REQUEST_MAX_BYTES")
+        .ok()
+        .and_then(|v| v.parse::<usize>().ok())
+        .unwrap_or(1_048_576);
+
+    let protected = Router::new()
         // ── Model operations ──────────────────────────────────────────────────
         .route(
             "/models/{model}/versions/{version_op}",
@@ -47,6 +55,12 @@ pub fn build(state: Arc<AppState>) -> Router {
         .route("/admin/registry/refresh", post(admin::registry_refresh))
         .route("/admin/config", get(admin::config))
         .route("/admin/cache/clear", post(admin::cache_clear))
+        .layer(DefaultBodyLimit::max(request_max_bytes))
+        .layer(middleware::from_fn_with_state(authn, auth::require_auth));
+
+    Router::new()
+        .route("/admin/health", get(admin::health))
+        .merge(protected)
         .with_state(state)
 }
 
@@ -54,11 +68,12 @@ pub fn build(state: Arc<AppState>) -> Router {
 mod tests {
     use crate::AppState;
     use axum::{
-        extract::{Path, State},
+        extract::{Extension, Path, State},
         http::HeaderMap,
         routing::{get, post},
         Router,
     };
+    use hex_core::domain::auth::SecurityContext;
     use hex_core::{
         ports::{
             inbound::{record::RecordUseCase, validate::ValidateUseCase},
@@ -103,6 +118,16 @@ mod tests {
             .expect("clock")
             .as_nanos();
         std::env::temp_dir().join(format!("hex-core-catalog-{nanos}.json"))
+    }
+
+    fn test_security_context() -> SecurityContext {
+        SecurityContext {
+            subject: "test-user".into(),
+            roles: vec![],
+            scopes: vec![],
+            tenant: None,
+            raw_token: Some("test-token".into()),
+        }
     }
 
     #[tokio::test]
@@ -299,6 +324,7 @@ mod tests {
                 model: model.to_string(),
                 version: version.to_string(),
             }),
+            Some(Extension(test_security_context())),
             HeaderMap::new(),
             axum::Json(crate::handlers::operations::ValidateRequest {
                 payload: serde_json::json!({ "record_scope": "document" }),
@@ -406,6 +432,7 @@ ex:Ontology a owl:Ontology .
                 model: model.to_string(),
                 version: version.to_string(),
             }),
+            Some(Extension(test_security_context())),
             HeaderMap::new(),
             axum::Json(crate::handlers::operations::ValidateRequest {
                 payload: serde_json::json!({ "record_scope": "document" }),

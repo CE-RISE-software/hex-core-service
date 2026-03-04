@@ -21,6 +21,7 @@ pub enum ApiError {
     MissingIdempotencyKey,
     Unauthorized(String),
     BadRequest(String),
+    Internal(String),
 }
 
 impl IntoResponse for ApiError {
@@ -48,6 +49,15 @@ impl IntoResponse for ApiError {
                 StatusCode::BAD_REQUEST,
                 ErrorBody {
                     code: "BAD_REQUEST".into(),
+                    message: msg,
+                    details: None,
+                },
+            ),
+
+            ApiError::Internal(msg) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                ErrorBody {
+                    code: "INTERNAL_ERROR".into(),
                     message: msg,
                     details: None,
                 },

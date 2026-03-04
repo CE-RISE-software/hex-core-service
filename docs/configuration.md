@@ -95,10 +95,28 @@ If individual model entries fail artifact resolution, refresh succeeds with per-
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `AUTH_JWKS_URL` | Yes | — | Keycloak JWKS endpoint URL |
-| `AUTH_ISSUER` | Yes | — | Expected JWT `iss` value |
-| `AUTH_AUDIENCE` | Yes | — | Expected JWT `aud` value |
-| `AUTH_JWKS_REFRESH_SECS` | No | `3600` | JWKS key refresh interval in seconds |
+| `AUTH_MODE` | No | `jwt_jwks` | Auth provider mode: `jwt_jwks`, `forward_auth`, or `none` |
+| `AUTH_JWKS_URL` | Cond. | — | JWKS endpoint URL (`AUTH_MODE=jwt_jwks`) |
+| `AUTH_ISSUER` | Cond. | — | Expected JWT `iss` (`AUTH_MODE=jwt_jwks`) |
+| `AUTH_AUDIENCE` | Cond. | — | Expected JWT `aud` (`AUTH_MODE=jwt_jwks`) |
+| `AUTH_JWKS_REFRESH_SECS` | No | `3600` | JWKS key refresh interval seconds (`AUTH_MODE=jwt_jwks`) |
+| `AUTH_FORWARD_SUBJECT_HEADER` | No | `x-auth-subject` | Subject header name (`AUTH_MODE=forward_auth`) |
+| `AUTH_FORWARD_ROLES_HEADER` | No | `x-auth-roles` | Comma-separated roles header (`AUTH_MODE=forward_auth`) |
+| `AUTH_FORWARD_SCOPES_HEADER` | No | `x-auth-scopes` | Space-separated scopes header (`AUTH_MODE=forward_auth`) |
+| `AUTH_FORWARD_TENANT_HEADER` | No | — | Tenant header name (`AUTH_MODE=forward_auth`) |
+| `AUTH_FORWARD_TOKEN_HEADER` | No | — | Header containing raw token to propagate (`AUTH_MODE=forward_auth`) |
+| `AUTH_ALLOW_INSECURE_NONE` | No | `false` | Must be `true` to allow `AUTH_MODE=none` (unsafe, non-production) |
+| `AUTH_NONE_SUBJECT` | No | `dev-anonymous` | Subject injected in `AUTH_MODE=none` |
+| `AUTH_NONE_ROLES` | No | — | Comma-separated roles injected in `AUTH_MODE=none` |
+| `AUTH_NONE_SCOPES` | No | — | Space-separated scopes injected in `AUTH_MODE=none` |
+| `AUTH_NONE_TENANT` | No | — | Optional tenant injected in `AUTH_MODE=none` |
+
+Notes:
+
+- `jwt_jwks` is for direct bearer JWT validation in this service.
+- `forward_auth` is for deployments where an upstream proxy/gateway already authenticated the caller and injects identity headers.
+- `none` is only for isolated dry runs and requires `AUTH_ALLOW_INSECURE_NONE=true`.
+- Detailed integration guidance: [Authentication](authentication.md).
 
 ## Server
 

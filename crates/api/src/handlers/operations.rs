@@ -1,5 +1,5 @@
 use axum::{
-    extract::{Path, State},
+    extract::{Extension, Path, State},
     http::HeaderMap,
     response::{IntoResponse, Response},
     Json,
@@ -38,6 +38,7 @@ pub struct SlashOperationPath {
 pub async fn dispatch(
     State(state): State<Arc<AppState>>,
     Path(path): Path<RawOperationPath>,
+    ctx: Option<Extension<SecurityContext>>,
     headers: HeaderMap,
     Json(body): Json<serde_json::Value>,
 ) -> Result<Response, ApiError> {
@@ -52,6 +53,7 @@ pub async fn dispatch(
         path.model,
         version.to_string(),
         operation.to_string(),
+        ctx.map(|Extension(c)| c),
         headers,
         body,
     )
@@ -63,6 +65,7 @@ pub async fn dispatch(
 pub async fn dispatch_slash(
     State(state): State<Arc<AppState>>,
     Path(path): Path<SlashOperationPath>,
+    ctx: Option<Extension<SecurityContext>>,
     headers: HeaderMap,
     Json(body): Json<serde_json::Value>,
 ) -> Result<Response, ApiError> {
@@ -71,6 +74,7 @@ pub async fn dispatch_slash(
         path.model,
         path.version,
         path.operation,
+        ctx.map(|Extension(c)| c),
         headers,
         body,
     )
@@ -82,32 +86,52 @@ async fn dispatch_with_parts(
     model: String,
     version: String,
     operation: String,
+    ctx: Option<SecurityContext>,
     headers: HeaderMap,
     body: serde_json::Value,
 ) -> Result<Response, ApiError> {
     let model_path = ModelPath { model, version };
+    let extension_ctx = ctx.map(Extension);
 
     match operation.as_str() {
         "validate" => {
             let request: ValidateRequest = serde_json::from_value(body)
                 .map_err(|e| ApiError::BadRequest(format!("invalid validate body: {e}")))?;
-            validate(State(state), Path(model_path), headers, Json(request))
-                .await
-                .map(IntoResponse::into_response)
+            validate(
+                State(state),
+                Path(model_path),
+                extension_ctx.clone(),
+                headers,
+                Json(request),
+            )
+            .await
+            .map(IntoResponse::into_response)
         }
         "create" => {
             let request: CreateRequest = serde_json::from_value(body)
                 .map_err(|e| ApiError::BadRequest(format!("invalid create body: {e}")))?;
-            create(State(state), Path(model_path), headers, Json(request))
-                .await
-                .map(IntoResponse::into_response)
+            create(
+                State(state),
+                Path(model_path),
+                extension_ctx.clone(),
+                headers,
+                Json(request),
+            )
+            .await
+            .map(IntoResponse::into_response)
         }
         "query" => {
             let request: QueryRequest = serde_json::from_value(body)
                 .map_err(|e| ApiError::BadRequest(format!("invalid query body: {e}")))?;
-            query(State(state), Path(model_path), headers, Json(request))
-                .await
-                .map(IntoResponse::into_response)
+            query(
+                State(state),
+                Path(model_path),
+                extension_ctx,
+                headers,
+                Json(request),
+            )
+            .await
+            .map(IntoResponse::into_response)
         }
         other => Err(ApiError::BadRequest(format!(
             "unsupported operation '{other}', expected one of: validate, create, query"
@@ -140,10 +164,12 @@ pub struct ValidateResponse {
 pub async fn validate(
     State(state): State<Arc<AppState>>,
     Path(path): Path<ModelPath>,
+    ctx: Option<Extension<SecurityContext>>,
     headers: HeaderMap,
     Json(body): Json<ValidateRequest>,
 ) -> Result<Json<ValidateResponse>, ApiError> {
-    let ctx = extract_security_context(&headers)?;
+    let ctx = require_security_context(ctx)?;
+    let _ = headers;
     let model = path.model_id();
     let version = path.model_version();
 
@@ -176,10 +202,11 @@ pub struct CreateResponse {
 pub async fn create(
     State(state): State<Arc<AppState>>,
     Path(path): Path<ModelPath>,
+    ctx: Option<Extension<SecurityContext>>,
     headers: HeaderMap,
     Json(body): Json<CreateRequest>,
 ) -> Result<Json<CreateResponse>, ApiError> {
-    let ctx = extract_security_context(&headers)?;
+    let ctx = require_security_context(ctx)?;
     let idempotency_key = extract_idempotency_key(&headers)?;
     let model = path.model_id();
     let version = path.model_version();
@@ -213,10 +240,12 @@ pub struct QueryResponse {
 pub async fn query(
     State(state): State<Arc<AppState>>,
     Path(path): Path<ModelPath>,
+    ctx: Option<Extension<SecurityContext>>,
     headers: HeaderMap,
     Json(body): Json<QueryRequest>,
 ) -> Result<Json<QueryResponse>, ApiError> {
-    let ctx = extract_security_context(&headers)?;
+    let ctx = require_security_context(ctx)?;
+    let _ = headers;
     let model = path.model_id();
     let version = path.model_version();
 
@@ -235,28 +264,11 @@ pub async fn query(
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-fn extract_security_context(headers: &HeaderMap) -> Result<SecurityContext, ApiError> {
-    // TODO: replace with real JWT validation middleware (see crate::auth).
-    // For now, extract a minimal stub context so the handler compiles and routes.
-    let subject = headers
-        .get("x-subject")
-        .and_then(|v| v.to_str().ok())
-        .unwrap_or("anonymous")
-        .to_string();
-
-    let raw_token = headers
-        .get("authorization")
-        .and_then(|v| v.to_str().ok())
-        .and_then(|v| v.strip_prefix("Bearer "))
-        .map(|t| t.to_string());
-
-    Ok(SecurityContext {
-        subject,
-        roles: vec![],
-        scopes: vec![],
-        tenant: None,
-        raw_token,
-    })
+fn require_security_context(
+    ctx: Option<Extension<SecurityContext>>,
+) -> Result<SecurityContext, ApiError> {
+    ctx.map(|Extension(c)| c)
+        .ok_or_else(|| ApiError::Unauthorized("missing validated security context".into()))
 }
 
 fn extract_idempotency_key(headers: &HeaderMap) -> Result<String, ApiError> {
