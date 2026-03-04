@@ -83,7 +83,7 @@ jobs:
               run: |
                   set -euo pipefail
                   cd dist/sdks/typescript
-                  npm publish --dry-run
+                  npm publish --dry-run --ignore-scripts
 
             - name: Build + twine check (PyPI dry run)
               run: |
