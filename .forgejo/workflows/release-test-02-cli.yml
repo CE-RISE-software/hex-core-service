@@ -67,7 +67,7 @@ jobs:
                   VERSION: test-cli-${{ github.run_number }}
               run: |
                   set -euo pipefail
-                  BIN_NAME="hex-cli${{ matrix.binary_suffix }}"
+                  BIN_NAME="hex${{ matrix.binary_suffix }}"
                   DIST_NAME="hex-cli-${VERSION}-${{ matrix.archive_suffix }}"
                   mkdir -p dist
                   cp "target/${{ matrix.target }}/release/${BIN_NAME}" "dist/${BIN_NAME}"
