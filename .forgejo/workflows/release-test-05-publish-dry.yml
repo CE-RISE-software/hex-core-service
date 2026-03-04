@@ -1,0 +1,82 @@
+name: Release Test 05 - Publish Dry Runs
+
+on:
+    workflow_dispatch:
+
+jobs:
+    publish-dry-checks:
+        runs-on: codeberg-tiny
+        steps:
+            - name: Checkout main
+              uses: actions/checkout@v4
+              with:
+                  ref: main
+
+            - name: Install Rust toolchain
+              uses: dtolnay/rust-toolchain@stable
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "20"
+
+            - name: Setup Python
+              uses: actions/setup-python@v5
+              with:
+                  python-version: "3.11"
+
+            - name: Setup Go
+              uses: actions/setup-go@v5
+              with:
+                  go-version: "1.23"
+
+            - name: Generate SDKs locally for dry-run publishing checks
+              env:
+                  VERSION: test-publish-dry-${{ github.run_number }}
+              run: |
+                  set -euo pipefail
+                  VERSION_NO_V="${VERSION#v}"
+                  mkdir -p dist/openapi dist/sdks
+                  cp crates/api/src/openapi.json "dist/openapi/openapi-${VERSION}.json"
+
+                  docker run --rm -v "$PWD:/local" openapitools/openapi-generator-cli:v7.10.0 generate \
+                    -g typescript-fetch \
+                    -i "/local/dist/openapi/openapi-${VERSION}.json" \
+                    -o /local/dist/sdks/typescript \
+                    --additional-properties=npmName=@ce-rise/hex-core-sdk,npmVersion="${VERSION_NO_V}",supportsES6=true,typescriptThreePlus=true
+
+                  docker run --rm -v "$PWD:/local" openapitools/openapi-generator-cli:v7.10.0 generate \
+                    -g python \
+                    -i "/local/dist/openapi/openapi-${VERSION}.json" \
+                    -o /local/dist/sdks/python \
+                    --additional-properties=packageName=ce_rise_hex_core_sdk,projectName=ce-rise-hex-core-sdk,packageVersion="${VERSION_NO_V}"
+
+                  docker run --rm -v "$PWD:/local" openapitools/openapi-generator-cli:v7.10.0 generate \
+                    -g go \
+                    -i "/local/dist/openapi/openapi-${VERSION}.json" \
+                    -o /local/dist/sdks/go \
+                    --additional-properties=packageName=hexcoresdk,enumClassPrefix=true,packageVersion="${VERSION_NO_V}"
+
+            - name: Cargo publish dry run
+              run: cargo publish -p hex-cli --dry-run
+
+            - name: NPM publish dry run
+              run: |
+                  set -euo pipefail
+                  cd dist/sdks/typescript
+                  npm publish --dry-run
+
+            - name: Build + twine check (PyPI dry run)
+              run: |
+                  set -euo pipefail
+                  python -m pip install --upgrade pip build twine
+                  cd dist/sdks/python
+                  python -m build
+                  python -m twine check dist/*
+
+            - name: Go module sanity check
+              run: |
+                  set -euo pipefail
+                  cd dist/sdks/go
+                  test -f go.mod
+                  go list ./...

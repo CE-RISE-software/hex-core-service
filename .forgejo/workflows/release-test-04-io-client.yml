@@ -1,0 +1,42 @@
+name: Release Test 04 - IO Typed Client
+
+on:
+    workflow_dispatch:
+
+jobs:
+    io-http-client-stub-eval:
+        runs-on: codeberg-tiny
+        steps:
+            - name: Checkout main
+              uses: actions/checkout@v4
+              with:
+                  ref: main
+
+            - name: Generate typed Rust IO adapter client stub
+              env:
+                  VERSION: test-io-client-${{ github.run_number }}
+              run: |
+                  set -euo pipefail
+                  VERSION_NO_V="${VERSION#v}"
+                  mkdir -p dist/openapi dist/io-http-client
+                  cp crates/io-http/src/io_adapter_openapi.json "dist/openapi/io-adapter-openapi-${VERSION}.json"
+
+                  docker run --rm -v "$PWD:/local" openapitools/openapi-generator-cli:v7.10.0 generate \
+                    -g rust \
+                    -i "/local/dist/openapi/io-adapter-openapi-${VERSION}.json" \
+                    -o /local/dist/io-http-client/rust-client \
+                    --additional-properties=packageName=hex_io_adapter_client,packageVersion="${VERSION_NO_V}",library=reqwest
+
+                  cat > dist/io-http-client/evaluation.md <<EOF
+                  # IO HTTP typed client evaluation
+
+                  - Generated from io-adapter OpenAPI.
+                  - Output path: dist/io-http-client/rust-client
+                  - Result: generation completed.
+                  EOF
+
+            - name: Upload IO HTTP typed client eval artifact
+              uses: https://github.com/actions/upload-artifact@v4
+              with:
+                  name: release-test-io-client-${{ github.run_number }}
+                  path: dist/io-http-client

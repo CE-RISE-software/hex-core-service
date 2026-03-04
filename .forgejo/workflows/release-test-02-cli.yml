@@ -1,0 +1,59 @@
+name: Release Test 02 - CLI Binaries
+
+on:
+    workflow_dispatch:
+
+jobs:
+    cli-binaries:
+        runs-on: codeberg-tiny
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - target: x86_64-unknown-linux-musl
+                      archive_suffix: linux-x86_64
+                      binary_suffix: ""
+                    - target: x86_64-apple-darwin
+                      archive_suffix: macos-x86_64
+                      binary_suffix: ""
+                    - target: x86_64-pc-windows-gnu
+                      archive_suffix: windows-x86_64
+                      binary_suffix: .exe
+        steps:
+            - name: Checkout main
+              uses: actions/checkout@v4
+              with:
+                  ref: main
+
+            - name: Install Rust toolchain
+              uses: dtolnay/rust-toolchain@stable
+
+            - name: Install Zig
+              uses: goto-bus-stop/setup-zig@v2
+              with:
+                  version: 0.13.0
+
+            - name: Install cargo-zigbuild
+              run: cargo install --locked cargo-zigbuild
+
+            - name: Build hex-cli
+              run: cargo zigbuild --release -p hex-cli --target ${{ matrix.target }}
+              env:
+                  RUSTFLAGS: "-D warnings"
+
+            - name: Package CLI archive
+              env:
+                  VERSION: test-cli-${{ github.run_number }}
+              run: |
+                  set -euo pipefail
+                  BIN_NAME="hex-cli${{ matrix.binary_suffix }}"
+                  DIST_NAME="hex-cli-${VERSION}-${{ matrix.archive_suffix }}"
+                  mkdir -p dist
+                  cp "target/${{ matrix.target }}/release/${BIN_NAME}" "dist/${BIN_NAME}"
+                  (cd dist && tar -czf "${DIST_NAME}.tar.gz" "${BIN_NAME}")
+
+            - name: Upload CLI archive
+              uses: https://github.com/actions/upload-artifact@v4
+              with:
+                  name: release-test-cli-${{ matrix.archive_suffix }}-${{ github.run_number }}
+                  path: dist/*.tar.gz

@@ -147,12 +147,6 @@ jobs:
                   docker push ${{ vars.REGISTRY_HOST }}/${{ vars.REGISTRY_NAMESPACE }}/hex-core-service:${{ github.sha }}
                   docker push ${{ vars.REGISTRY_HOST }}/${{ vars.REGISTRY_NAMESPACE }}/hex-core-service:latest
 
-            - name: Push release tag to GitHub mirror
-              run: |
-                  git remote add github https://x-token:${{ secrets.GITHUB_MIRROR_TOKEN }}@github.com/${{ vars.GITHUB_MIRROR_REPO }}.git
-                  git push github ${{ steps.tag.outputs.VERSION }}
-              continue-on-error: true
-
     cli-distribution:
         runs-on: codeberg-tiny
         needs: cli-binaries
@@ -196,7 +190,11 @@ jobs:
                   set -euo pipefail
                   mkdir -p dist/packages
                   VERSION_NO_V="${VERSION#v}"
-                  BASE_URL="${RELEASE_BASE_URL:-https://github.com/${{ vars.GITHUB_MIRROR_REPO }}/releases/download/${VERSION}}"
+                  if [ -z "${RELEASE_BASE_URL:-}" ]; then
+                    echo "CLI_RELEASE_BASE_URL must be set when CLI_DISTRIBUTION_ENABLED=true"
+                    exit 1
+                  fi
+                  BASE_URL="${RELEASE_BASE_URL}"
                   LINUX_SHA="$(cut -d' ' -f1 dist/archives/linux.sha256)"
                   MACOS_SHA="$(cut -d' ' -f1 dist/archives/macos.sha256)"
                   WINDOWS_SHA="$(cut -d' ' -f1 dist/archives/windows.sha256)"

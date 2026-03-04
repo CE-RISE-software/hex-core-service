@@ -1,4 +1,4 @@
-# Deployment
+I# Deployment
 
 This guide covers packaging, containerization, and deployment of the CE-RISE Hex Core Service.
 
@@ -456,8 +456,8 @@ The release workflow keeps CLI publishing disabled by default. Enable explicitly
   - Runs `cargo publish -p hex-cli`.
   - Requires `CARGO_REGISTRY_TOKEN` secret.
 - `CLI_RELEASE_BASE_URL` (optional)
-  - Overrides archive base URL used inside generated manifests.
-  - Default: GitHub mirror release URL (`https://github.com/<mirror-repo>/releases/download/<tag>`).
+  - Required when `CLI_DISTRIBUTION_ENABLED=true`.
+  - Base URL used inside generated Homebrew/Scoop manifests.
 
 ### Optional SDK Generation and Publication Toggles
 
@@ -481,6 +481,23 @@ SDK generation and publishing are disabled by default. Enable explicitly in CI v
 - `IO_HTTP_TYPED_CLIENT_EVAL_ENABLED=true`
   - Generates Rust typed stubs from `crates/io-http/src/io_adapter_openapi.json`.
   - Uploads generated stub plus evaluation note as artifacts.
+
+### Manual Release Test Sequence (Pre-Tag)
+
+Run these manual workflows in order. Each workflow is zero-input and pinned to `main`.
+
+1. `.forgejo/workflows/release-test-01-openapi.yml`
+   - Verifies OpenAPI export artifact generation.
+2. `.forgejo/workflows/release-test-02-cli.yml`
+   - Verifies CLI archive builds for Linux/macOS/Windows.
+3. `.forgejo/workflows/release-test-03-sdk.yml`
+   - Verifies SDK generation for TypeScript, Python, and Go.
+4. `.forgejo/workflows/release-test-04-io-client.yml`
+   - Verifies typed Rust IO adapter client generation from IO adapter OpenAPI.
+5. `.forgejo/workflows/release-test-05-publish-dry.yml`
+   - Verifies publish paths in dry-run mode (`cargo`, `npm`, `PyPI`, `Go` checks).
+
+Only after all five pass should you push a real semver tag (`vX.Y.Z`) for `.forgejo/workflows/release.yml`.
 
 ### Cross-Forge Mirroring
 

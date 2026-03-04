@@ -1,0 +1,46 @@
+name: Release Test 03 - SDK Generation
+
+on:
+    workflow_dispatch:
+
+jobs:
+    sdk-generate:
+        runs-on: codeberg-tiny
+        steps:
+            - name: Checkout main
+              uses: actions/checkout@v4
+              with:
+                  ref: main
+
+            - name: Generate TypeScript, Python, and Go SDKs
+              env:
+                  VERSION: test-sdk-${{ github.run_number }}
+              run: |
+                  set -euo pipefail
+                  VERSION_NO_V="${VERSION#v}"
+                  mkdir -p dist/openapi dist/sdks
+                  cp crates/api/src/openapi.json "dist/openapi/openapi-${VERSION}.json"
+
+                  docker run --rm -v "$PWD:/local" openapitools/openapi-generator-cli:v7.10.0 generate \
+                    -g typescript-fetch \
+                    -i "/local/dist/openapi/openapi-${VERSION}.json" \
+                    -o /local/dist/sdks/typescript \
+                    --additional-properties=npmName=@ce-rise/hex-core-sdk,npmVersion="${VERSION_NO_V}",supportsES6=true,typescriptThreePlus=true
+
+                  docker run --rm -v "$PWD:/local" openapitools/openapi-generator-cli:v7.10.0 generate \
+                    -g python \
+                    -i "/local/dist/openapi/openapi-${VERSION}.json" \
+                    -o /local/dist/sdks/python \
+                    --additional-properties=packageName=ce_rise_hex_core_sdk,projectName=ce-rise-hex-core-sdk,packageVersion="${VERSION_NO_V}"
+
+                  docker run --rm -v "$PWD:/local" openapitools/openapi-generator-cli:v7.10.0 generate \
+                    -g go \
+                    -i "/local/dist/openapi/openapi-${VERSION}.json" \
+                    -o /local/dist/sdks/go \
+                    --additional-properties=packageName=hexcoresdk,enumClassPrefix=true,packageVersion="${VERSION_NO_V}"
+
+            - name: Upload generated SDKs
+              uses: https://github.com/actions/upload-artifact@v4
+              with:
+                  name: release-test-sdk-${{ github.run_number }}
+                  path: dist/sdks
