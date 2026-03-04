@@ -5,12 +5,23 @@ on:
 
 jobs:
     sdk-generate:
-        runs-on: codeberg-tiny
+        runs-on: codeberg-medium
         steps:
             - name: Checkout main
               uses: actions/checkout@v4
               with:
                   ref: main
+
+            - name: Setup Java
+              uses: https://github.com/actions/setup-java@v4
+              with:
+                  distribution: temurin
+                  java-version: "17"
+
+            - name: Setup Node.js
+              uses: https://github.com/actions/setup-node@v4
+              with:
+                  node-version: "20"
 
             - name: Generate TypeScript, Python, and Go SDKs
               env:
@@ -21,22 +32,24 @@ jobs:
                   mkdir -p dist/openapi dist/sdks
                   cp crates/api/src/openapi.json "dist/openapi/openapi-${VERSION}.json"
 
-                  docker run --rm -v "$PWD:/local" openapitools/openapi-generator-cli:v7.10.0 generate \
+                  npx -y @openapitools/openapi-generator-cli@2.15.3 version-manager set 7.10.0
+
+                  npx -y @openapitools/openapi-generator-cli@2.15.3 generate \
                     -g typescript-fetch \
-                    -i "/local/dist/openapi/openapi-${VERSION}.json" \
-                    -o /local/dist/sdks/typescript \
+                    -i "dist/openapi/openapi-${VERSION}.json" \
+                    -o "dist/sdks/typescript" \
                     --additional-properties=npmName=@ce-rise/hex-core-sdk,npmVersion="${VERSION_NO_V}",supportsES6=true,typescriptThreePlus=true
 
-                  docker run --rm -v "$PWD:/local" openapitools/openapi-generator-cli:v7.10.0 generate \
+                  npx -y @openapitools/openapi-generator-cli@2.15.3 generate \
                     -g python \
-                    -i "/local/dist/openapi/openapi-${VERSION}.json" \
-                    -o /local/dist/sdks/python \
+                    -i "dist/openapi/openapi-${VERSION}.json" \
+                    -o "dist/sdks/python" \
                     --additional-properties=packageName=ce_rise_hex_core_sdk,projectName=ce-rise-hex-core-sdk,packageVersion="${VERSION_NO_V}"
 
-                  docker run --rm -v "$PWD:/local" openapitools/openapi-generator-cli:v7.10.0 generate \
+                  npx -y @openapitools/openapi-generator-cli@2.15.3 generate \
                     -g go \
-                    -i "/local/dist/openapi/openapi-${VERSION}.json" \
-                    -o /local/dist/sdks/go \
+                    -i "dist/openapi/openapi-${VERSION}.json" \
+                    -o "dist/sdks/go" \
                     --additional-properties=packageName=hexcoresdk,enumClassPrefix=true,packageVersion="${VERSION_NO_V}"
 
             - name: Upload generated SDKs

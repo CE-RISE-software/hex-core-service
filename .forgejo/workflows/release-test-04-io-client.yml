@@ -5,12 +5,23 @@ on:
 
 jobs:
     io-http-client-stub-eval:
-        runs-on: codeberg-tiny
+        runs-on: codeberg-medium
         steps:
             - name: Checkout main
               uses: actions/checkout@v4
               with:
                   ref: main
+
+            - name: Setup Java
+              uses: https://github.com/actions/setup-java@v4
+              with:
+                  distribution: temurin
+                  java-version: "17"
+
+            - name: Setup Node.js
+              uses: https://github.com/actions/setup-node@v4
+              with:
+                  node-version: "20"
 
             - name: Generate typed Rust IO adapter client stub
               env:
@@ -21,10 +32,11 @@ jobs:
                   mkdir -p dist/openapi dist/io-http-client
                   cp crates/io-http/src/io_adapter_openapi.json "dist/openapi/io-adapter-openapi-${VERSION}.json"
 
-                  docker run --rm -v "$PWD:/local" openapitools/openapi-generator-cli:v7.10.0 generate \
+                  npx -y @openapitools/openapi-generator-cli@2.15.3 version-manager set 7.10.0
+                  npx -y @openapitools/openapi-generator-cli@2.15.3 generate \
                     -g rust \
-                    -i "/local/dist/openapi/io-adapter-openapi-${VERSION}.json" \
-                    -o /local/dist/io-http-client/rust-client \
+                    -i "dist/openapi/io-adapter-openapi-${VERSION}.json" \
+                    -o "dist/io-http-client/rust-client" \
                     --additional-properties=packageName=hex_io_adapter_client,packageVersion="${VERSION_NO_V}",library=reqwest
 
                   cat > dist/io-http-client/evaluation.md <<EOF

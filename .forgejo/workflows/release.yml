@@ -293,13 +293,24 @@ jobs:
                       dist/packages/hex-cli.scoop.json
 
     sdk-generate:
-        runs-on: codeberg-tiny
+        runs-on: codeberg-medium
         needs: openapi-export
         if: ${{ vars.SDK_GENERATION_ENABLED == 'true' }}
 
         steps:
             - name: Checkout
               uses: actions/checkout@v4
+
+            - name: Setup Java
+              uses: https://github.com/actions/setup-java@v4
+              with:
+                  distribution: temurin
+                  java-version: "17"
+
+            - name: Setup Node.js
+              uses: https://github.com/actions/setup-node@v4
+              with:
+                  node-version: "20"
 
             - name: Extract version tag
               id: tag
@@ -319,22 +330,23 @@ jobs:
                   mkdir -p dist/sdks
                   VERSION_NO_V="${VERSION#v}"
 
-                  docker run --rm -v "$PWD:/local" openapitools/openapi-generator-cli:v7.10.0 generate \
+                  npx -y @openapitools/openapi-generator-cli@2.15.3 version-manager set 7.10.0
+                  npx -y @openapitools/openapi-generator-cli@2.15.3 generate \
                     -g typescript-fetch \
-                    -i "/local/dist/openapi/openapi-${VERSION}.json" \
-                    -o /local/dist/sdks/typescript \
+                    -i "dist/openapi/openapi-${VERSION}.json" \
+                    -o "dist/sdks/typescript" \
                     --additional-properties=npmName=@ce-rise/hex-core-sdk,npmVersion="${VERSION_NO_V}",supportsES6=true,typescriptThreePlus=true
 
-                  docker run --rm -v "$PWD:/local" openapitools/openapi-generator-cli:v7.10.0 generate \
+                  npx -y @openapitools/openapi-generator-cli@2.15.3 generate \
                     -g python \
-                    -i "/local/dist/openapi/openapi-${VERSION}.json" \
-                    -o /local/dist/sdks/python \
+                    -i "dist/openapi/openapi-${VERSION}.json" \
+                    -o "dist/sdks/python" \
                     --additional-properties=packageName=ce_rise_hex_core_sdk,projectName=ce-rise-hex-core-sdk,packageVersion="${VERSION_NO_V}"
 
-                  docker run --rm -v "$PWD:/local" openapitools/openapi-generator-cli:v7.10.0 generate \
+                  npx -y @openapitools/openapi-generator-cli@2.15.3 generate \
                     -g go \
-                    -i "/local/dist/openapi/openapi-${VERSION}.json" \
-                    -o /local/dist/sdks/go \
+                    -i "dist/openapi/openapi-${VERSION}.json" \
+                    -o "dist/sdks/go" \
                     --additional-properties=packageName=hexcoresdk,enumClassPrefix=true,packageVersion="${VERSION_NO_V}"
 
             - name: Upload generated SDKs
@@ -447,10 +459,21 @@ jobs:
                   git push origin "${VERSION}" || true
 
     io-http-client-stub-eval:
-        runs-on: codeberg-tiny
+        runs-on: codeberg-medium
         needs: openapi-export
         if: ${{ vars.IO_HTTP_TYPED_CLIENT_EVAL_ENABLED == 'true' }}
         steps:
+            - name: Setup Java
+              uses: https://github.com/actions/setup-java@v4
+              with:
+                  distribution: temurin
+                  java-version: "17"
+
+            - name: Setup Node.js
+              uses: https://github.com/actions/setup-node@v4
+              with:
+                  node-version: "20"
+
             - name: Extract version tag
               id: tag
               run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
@@ -468,10 +491,11 @@ jobs:
                   set -euo pipefail
                   mkdir -p dist/io-http-client
                   VERSION_NO_V="${VERSION#v}"
-                  docker run --rm -v "$PWD:/local" openapitools/openapi-generator-cli:v7.10.0 generate \
+                  npx -y @openapitools/openapi-generator-cli@2.15.3 version-manager set 7.10.0
+                  npx -y @openapitools/openapi-generator-cli@2.15.3 generate \
                     -g rust \
-                    -i "/local/dist/openapi/io-adapter-openapi-${VERSION}.json" \
-                    -o /local/dist/io-http-client/rust-client \
+                    -i "dist/openapi/io-adapter-openapi-${VERSION}.json" \
+                    -o "dist/io-http-client/rust-client" \
                     --additional-properties=packageName=hex_io_adapter_client,packageVersion="${VERSION_NO_V}",library=reqwest
 
                   cat > dist/io-http-client/evaluation.md <<EOF
