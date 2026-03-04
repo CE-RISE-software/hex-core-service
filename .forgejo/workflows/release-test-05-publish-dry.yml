@@ -51,7 +51,9 @@ jobs:
                   VERSION: test-publish-dry-${{ github.run_number }}
               run: |
                   set -euo pipefail
-                  VERSION_NO_V="${VERSION#v}"
+                  NPM_VERSION="0.0.0-test.${{ github.run_number }}"
+                  PYTHON_VERSION="0.0.0.dev${{ github.run_number }}"
+                  GO_VERSION="0.0.0-test.${{ github.run_number }}"
                   mkdir -p dist/openapi dist/sdks
                   cp crates/api/src/openapi.json "dist/openapi/openapi-${VERSION}.json"
 
@@ -60,19 +62,19 @@ jobs:
                     -g typescript-fetch \
                     -i "dist/openapi/openapi-${VERSION}.json" \
                     -o "dist/sdks/typescript" \
-                    --additional-properties=npmName=@ce-rise/hex-core-sdk,npmVersion="${VERSION_NO_V}",supportsES6=true,typescriptThreePlus=true
+                    --additional-properties=npmName=@ce-rise/hex-core-sdk,npmVersion="${NPM_VERSION}",supportsES6=true,typescriptThreePlus=true
 
                   npx -y @openapitools/openapi-generator-cli@2.15.3 generate \
                     -g python \
                     -i "dist/openapi/openapi-${VERSION}.json" \
                     -o "dist/sdks/python" \
-                    --additional-properties=packageName=ce_rise_hex_core_sdk,projectName=ce-rise-hex-core-sdk,packageVersion="${VERSION_NO_V}"
+                    --additional-properties=packageName=ce_rise_hex_core_sdk,projectName=ce-rise-hex-core-sdk,packageVersion="${PYTHON_VERSION}"
 
                   npx -y @openapitools/openapi-generator-cli@2.15.3 generate \
                     -g go \
                     -i "dist/openapi/openapi-${VERSION}.json" \
                     -o "dist/sdks/go" \
-                    --additional-properties=packageName=hexcoresdk,enumClassPrefix=true,packageVersion="${VERSION_NO_V}"
+                    --additional-properties=packageName=hexcoresdk,enumClassPrefix=true,packageVersion="${GO_VERSION}"
 
             - name: Cargo publish dry run
               run: cargo publish -p hex-cli --dry-run
