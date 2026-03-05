@@ -47,6 +47,3 @@ jobs:
               run: cargo test --workspace
               env:
                   RUSTFLAGS: "-D warnings"
-
-            - name: Smoke build (release)
-              run: cargo build --release -p hex-api

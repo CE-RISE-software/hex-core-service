@@ -123,7 +123,7 @@ async fn run_client(base_url: String, token: Option<String>, command: ClientComm
     let client = reqwest::Client::new();
     match command {
         ClientCommand::Models => {
-            let url = format!("{}/models", base_url.trim_end_matches('/'));
+            let url = models_url(&base_url);
             let req = with_auth(client.get(url), token.as_deref());
             let resp = req.send().await.context("request failed")?;
             print_json_response(resp).await?;
@@ -135,12 +135,7 @@ async fn run_client(base_url: String, token: Option<String>, command: ClientComm
             payload_file,
         } => {
             let payload = read_json_file(&payload_file)?;
-            let url = format!(
-                "{}/models/{}/versions/{}:validate",
-                base_url.trim_end_matches('/'),
-                model,
-                version
-            );
+            let url = validate_url(&base_url, &model, &version);
             let req = with_auth(
                 client
                     .post(url)
@@ -158,12 +153,7 @@ async fn run_client(base_url: String, token: Option<String>, command: ClientComm
             idempotency_key,
         } => {
             let payload = read_json_file(&payload_file)?;
-            let url = format!(
-                "{}/models/{}/versions/{}:create",
-                base_url.trim_end_matches('/'),
-                model,
-                version
-            );
+            let url = create_url(&base_url, &model, &version);
             let req = with_auth(
                 client
                     .post(url)
@@ -181,12 +171,7 @@ async fn run_client(base_url: String, token: Option<String>, command: ClientComm
             filter_file,
         } => {
             let filter = read_json_file(&filter_file)?;
-            let url = format!(
-                "{}/models/{}/versions/{}:query",
-                base_url.trim_end_matches('/'),
-                model,
-                version
-            );
+            let url = query_url(&base_url, &model, &version);
             let req = with_auth(
                 client
                     .post(url)
@@ -211,6 +196,37 @@ fn with_auth(req: reqwest::RequestBuilder, token: Option<&str>) -> reqwest::Requ
         Some(t) if !t.is_empty() => req.bearer_auth(t),
         _ => req,
     }
+}
+
+fn models_url(base_url: &str) -> String {
+    format!("{}/models", base_url.trim_end_matches('/'))
+}
+
+fn validate_url(base_url: &str, model: &str, version: &str) -> String {
+    format!(
+        "{}/models/{}/versions/{}:validate",
+        base_url.trim_end_matches('/'),
+        model,
+        version
+    )
+}
+
+fn create_url(base_url: &str, model: &str, version: &str) -> String {
+    format!(
+        "{}/models/{}/versions/{}:create",
+        base_url.trim_end_matches('/'),
+        model,
+        version
+    )
+}
+
+fn query_url(base_url: &str, model: &str, version: &str) -> String {
+    format!(
+        "{}/models/{}/versions/{}:query",
+        base_url.trim_end_matches('/'),
+        model,
+        version
+    )
 }
 
 async fn print_json_response(resp: reqwest::Response) -> Result<()> {
@@ -264,4 +280,56 @@ struct ValidationViolation {
     path: Option<String>,
     message: String,
     severity: String,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{create_url, models_url, query_url, validate_url, with_auth};
+
+    #[test]
+    fn endpoint_url_builders_trim_trailing_slashes() {
+        let base = "http://example.test/";
+        assert_eq!(models_url(base), "http://example.test/models");
+        assert_eq!(
+            validate_url(base, "m", "1"),
+            "http://example.test/models/m/versions/1:validate"
+        );
+        assert_eq!(
+            create_url(base, "m", "1"),
+            "http://example.test/models/m/versions/1:create"
+        );
+        assert_eq!(
+            query_url(base, "m", "1"),
+            "http://example.test/models/m/versions/1:query"
+        );
+    }
+
+    #[test]
+    fn with_auth_sets_bearer_authorization_header() {
+        let client = reqwest::Client::new();
+        let req = with_auth(client.get("http://example.test/models"), Some("token-123"))
+            .build()
+            .expect("build request");
+        let auth = req
+            .headers()
+            .get("authorization")
+            .expect("authorization header")
+            .to_str()
+            .expect("header string");
+        assert_eq!(auth, "Bearer token-123");
+    }
+
+    #[test]
+    fn with_auth_omits_authorization_when_token_is_missing_or_empty() {
+        let client = reqwest::Client::new();
+        let no_token = with_auth(client.get("http://example.test/models"), None)
+            .build()
+            .expect("build request");
+        assert!(!no_token.headers().contains_key("authorization"));
+
+        let empty_token = with_auth(client.get("http://example.test/models"), Some(""))
+            .build()
+            .expect("build request");
+        assert!(!empty_token.headers().contains_key("authorization"));
+    }
 }
