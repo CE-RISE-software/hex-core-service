@@ -433,7 +433,7 @@ Releases are fully automated via CI/CD. To create a new release:
 
 ### OpenAPI Spec Release Model
 
-OpenAPI specs are released via git history and tags, not as separate CI artifacts:
+OpenAPI specs are released and persisted in-repo via git history and tags (not as separate OpenAPI artifacts):
 
 - Source of truth:
   - `crates/api/src/openapi.json`
@@ -441,7 +441,8 @@ OpenAPI specs are released via git history and tags, not as separate CI artifact
 - Versioning:
   - semantic git tags (`vX.Y.Z`) identify the released spec version.
 - Commit-time CI:
-  - `.forgejo/workflows/openapi-ci.yml` creates/validates OpenAPI JSON on every push/PR.
+  - OpenAPI spec validation runs in Rust tests (`cargo test`) in CI.
+  - No separate OpenAPI workflow or artifact export is required.
 
 ### Release Checklist
 
