@@ -284,6 +284,89 @@ mod tests {
         assert_eq!(records[0].id.0, "rec-1");
     }
 
+    #[tokio::test]
+    async fn write_server_error_maps_to_unavailable() {
+        let server = MockServer::start().await;
+        let store = HttpRecordStore::new(server.uri(), 5_000);
+
+        Mock::given(method("POST"))
+            .and(path(IO_ADAPTER_PATH_WRITE))
+            .respond_with(ResponseTemplate::new(503).set_body_string("io down"))
+            .mount(&server)
+            .await;
+
+        let err = store
+            .write(&ctx_with_token(), "idem-1", sample_record())
+            .await
+            .expect_err("write should fail");
+        assert!(matches!(err, StoreError::Unavailable(_)));
+    }
+
+    #[tokio::test]
+    async fn query_bad_request_maps_to_internal() {
+        let server = MockServer::start().await;
+        let store = HttpRecordStore::new(server.uri(), 5_000);
+
+        Mock::given(method("POST"))
+            .and(path(IO_ADAPTER_PATH_QUERY))
+            .respond_with(ResponseTemplate::new(400).set_body_string("bad filter"))
+            .mount(&server)
+            .await;
+
+        let err = store
+            .query(&ctx_with_token(), serde_json::json!({"invalid": true}))
+            .await
+            .expect_err("query should fail");
+        assert!(matches!(err, StoreError::Internal(_)));
+    }
+
+    #[tokio::test]
+    async fn write_success_with_invalid_payload_maps_decode_error() {
+        let server = MockServer::start().await;
+        let store = HttpRecordStore::new(server.uri(), 5_000);
+
+        Mock::given(method("POST"))
+            .and(path(IO_ADAPTER_PATH_WRITE))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "unexpected": "shape"
+            })))
+            .mount(&server)
+            .await;
+
+        let err = store
+            .write(&ctx_with_token(), "idem-1", sample_record())
+            .await
+            .expect_err("write decode should fail");
+        assert!(matches!(err, StoreError::Internal(_)));
+    }
+
+    #[tokio::test]
+    async fn query_success_with_invalid_payload_maps_decode_error() {
+        let server = MockServer::start().await;
+        let store = HttpRecordStore::new(server.uri(), 5_000);
+
+        Mock::given(method("POST"))
+            .and(path(IO_ADAPTER_PATH_QUERY))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "unexpected": []
+            })))
+            .mount(&server)
+            .await;
+
+        let err = store
+            .query(&ctx_with_token(), serde_json::json!({"model": "model-a"}))
+            .await
+            .expect_err("query decode should fail");
+        assert!(matches!(err, StoreError::Internal(_)));
+    }
+
+    #[test]
+    fn endpoint_normalizes_base_url_and_path_slashes() {
+        let store = HttpRecordStore::new("https://example.org/", 5_000);
+        assert_eq!(store.endpoint("/records"), "https://example.org/records");
+        assert_eq!(store.endpoint("records/query"), "https://example.org/records/query");
+    }
+
     #[test]
     fn openapi_contract_matches_io_http_paths_and_methods() {
         const IO_ADAPTER_PATH_READ_TEMPLATE: &str = "/records/{id}";
