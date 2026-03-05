@@ -364,7 +364,10 @@ mod tests {
     fn endpoint_normalizes_base_url_and_path_slashes() {
         let store = HttpRecordStore::new("https://example.org/", 5_000);
         assert_eq!(store.endpoint("/records"), "https://example.org/records");
-        assert_eq!(store.endpoint("records/query"), "https://example.org/records/query");
+        assert_eq!(
+            store.endpoint("records/query"),
+            "https://example.org/records/query"
+        );
     }
 
     #[test]
