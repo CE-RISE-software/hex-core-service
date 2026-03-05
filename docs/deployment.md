@@ -427,9 +427,8 @@ Releases are fully automated via CI/CD. To create a new release:
    - Builds Docker image
    - Pushes image with version, SHA, and `latest` tags
    - Mirrors tag to GitHub
-   - Optionally publishes `hex-cli` to crates.io and generates Homebrew/Scoop manifests when enabled
+   - Publishes `hex-cli` binaries as release artifacts (primary distribution channel)
    - Optionally publishes generated SDKs to npm, PyPI, and a dedicated Go module repository
-   - Optionally generates typed Rust stubs from IO adapter OpenAPI for evaluation against hand-written `io-http` client
 
 ### CLI Binary Availability
 
@@ -471,21 +470,13 @@ Before tagging a release:
 - [ ] Breaking changes are clearly documented
 - [ ] Migration guide provided (if applicable)
 
-### Optional CLI Distribution Toggles
+### CLI Distribution Policy
 
-The release workflow keeps CLI publishing disabled by default. Enable explicitly when needed:
+Current agreed policy:
 
-- `CLI_DISTRIBUTION_ENABLED=true`
-  - Activates optional CLI distribution job.
-  - Downloads built CLI archives and generates:
-    - `hex-cli.rb` (Homebrew formula)
-    - `hex-cli.scoop.json` (Scoop manifest)
-- `CLI_CRATES_IO_PUBLISH=true`
-  - Runs `cargo publish -p hex-cli`.
-  - Requires `CARGO_REGISTRY_TOKEN` secret.
-- `CLI_RELEASE_BASE_URL` (optional)
-  - Required when `CLI_DISTRIBUTION_ENABLED=true`.
-  - Base URL used inside generated Homebrew/Scoop manifests.
+- CLI binaries are distributed through release artifacts only.
+- No Homebrew/Scoop/crates.io publication is required for normal releases.
+- Users should download the OS/CPU-specific archive listed in [CLI Binary Availability](#cli-binary-availability).
 
 ### Optional SDK Generation and Publication Toggles
 
@@ -506,9 +497,6 @@ SDK generation and publishing are disabled by default. Enable explicitly in CI v
     - `GO_SDK_REPO` variable (`owner/repo`)
     - `GO_SDK_REPO_TOKEN` secret
     - Optional `GO_SDK_BRANCH` variable (default `main`)
-- `IO_HTTP_TYPED_CLIENT_EVAL_ENABLED=true`
-  - Generates Rust typed stubs from `crates/io-http/src/io_adapter_openapi.json`.
-  - Uploads generated stub plus evaluation note as artifacts.
 
 ### Cross-Forge Mirroring
 
