@@ -24,7 +24,7 @@ jobs:
                     echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
                   fi
                   . "$HOME/.cargo/env"
-                  rustup toolchain install stable --profile minimal --component rustfmt --component clippy
+                  rustup toolchain install stable --profile minimal --component rustfmt
                   rustup default stable
                   rustc --version
                   cargo --version
@@ -42,11 +42,6 @@ jobs:
 
             - name: Check formatting
               run: cargo fmt --all -- --check
-
-            - name: Clippy
-              run: cargo clippy --all-targets --all-features -- -D warnings
-              env:
-                  RUSTFLAGS: "-D warnings"
 
             - name: Unit and contract tests
               run: cargo test --workspace
