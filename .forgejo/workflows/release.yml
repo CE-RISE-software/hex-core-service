@@ -6,31 +6,6 @@ on:
             - "v*.*.*"
 
 jobs:
-    openapi-export:
-        runs-on: codeberg-tiny
-        steps:
-            - name: Checkout
-              uses: actions/checkout@v4
-
-            - name: Extract version tag
-              id: tag
-              run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
-
-            - name: Export OpenAPI artifacts
-              run: |
-                  set -euo pipefail
-                  mkdir -p dist/openapi
-                  cp crates/api/src/openapi.json "dist/openapi/openapi-${{ steps.tag.outputs.VERSION }}.json"
-                  cp crates/io-http/src/io_adapter_openapi.json "dist/openapi/io-adapter-openapi-${{ steps.tag.outputs.VERSION }}.json"
-
-            - name: Upload OpenAPI artifacts
-              uses: https://github.com/actions/upload-artifact@v3
-              with:
-                  name: openapi-${{ steps.tag.outputs.VERSION }}
-                  path: |
-                      dist/openapi/openapi-${{ steps.tag.outputs.VERSION }}.json
-                      dist/openapi/io-adapter-openapi-${{ steps.tag.outputs.VERSION }}.json
-
     cli-binaries:
         runs-on: codeberg-tiny
         strategy:
@@ -114,7 +89,6 @@ jobs:
     release:
         runs-on: codeberg-tiny
         needs:
-            - openapi-export
             - cli-binaries
 
         steps:
@@ -294,7 +268,6 @@ jobs:
 
     sdk-generate:
         runs-on: codeberg-medium
-        needs: openapi-export
         if: ${{ vars.SDK_GENERATION_ENABLED == 'true' }}
 
         steps:
@@ -316,11 +289,11 @@ jobs:
               id: tag
               run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
-            - name: Download OpenAPI artifacts
-              uses: https://github.com/actions/download-artifact@v3
-              with:
-                  name: openapi-${{ steps.tag.outputs.VERSION }}
-                  path: dist/openapi
+            - name: Prepare OpenAPI sources
+              run: |
+                  set -euo pipefail
+                  mkdir -p dist/openapi
+                  cp crates/api/src/openapi.json "dist/openapi/openapi-${{ steps.tag.outputs.VERSION }}.json"
 
             - name: Generate TypeScript, Python, and Go SDKs
               env:
@@ -460,7 +433,6 @@ jobs:
 
     io-http-client-stub-eval:
         runs-on: codeberg-medium
-        needs: openapi-export
         if: ${{ vars.IO_HTTP_TYPED_CLIENT_EVAL_ENABLED == 'true' }}
         steps:
             - name: Setup Java
@@ -478,11 +450,11 @@ jobs:
               id: tag
               run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
-            - name: Download OpenAPI artifacts
-              uses: https://github.com/actions/download-artifact@v3
-              with:
-                  name: openapi-${{ steps.tag.outputs.VERSION }}
-                  path: dist/openapi
+            - name: Prepare IO adapter OpenAPI source
+              run: |
+                  set -euo pipefail
+                  mkdir -p dist/openapi
+                  cp crates/io-http/src/io_adapter_openapi.json "dist/openapi/io-adapter-openapi-${{ steps.tag.outputs.VERSION }}.json"
 
             - name: Generate typed Rust stub for IO adapter API
               env:
