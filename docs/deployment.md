@@ -431,6 +431,22 @@ Releases are fully automated via CI/CD. To create a new release:
    - Optionally publishes generated SDKs to npm, PyPI, and a dedicated Go module repository
    - Optionally generates typed Rust stubs from IO adapter OpenAPI for evaluation against hand-written `io-http` client
 
+### CLI Binary Availability
+
+`hex-cli` binaries are produced by the release workflow and published as release-run artifacts with these archive names:
+
+- `hex-cli-<version>-linux-x86_64.tar.gz`
+- `hex-cli-<version>-macos-x86_64.tar.gz`
+- `hex-cli-<version>-windows-x86_64.tar.gz`
+
+Supported platform matrix:
+
+| OS | Rust target | CPU architecture | Archive suffix |
+|---|---|---|---|
+| Linux | `x86_64-unknown-linux-musl` | `x86_64` (amd64) | `linux-x86_64` |
+| macOS | `x86_64-apple-darwin` | `x86_64` (Intel) | `macos-x86_64` |
+| Windows | `x86_64-pc-windows-gnu` | `x86_64` (amd64) | `windows-x86_64` |
+
 ### OpenAPI Spec Release Model
 
 OpenAPI specs are released and persisted in-repo via git history and tags (not as separate OpenAPI artifacts):

@@ -1,15 +1,10 @@
 name: Publish Docs to Codeberg Pages
 
-# Trigger on every push to any branch and on version tags.
-# The pages branch is always updated to the latest docs from main.
-# On a version tag, the same built output is also pushed to a
-# versioned snapshot branch (pages-v*) for historical reference.
+# Trigger only on commits pushed to main.
 on:
     push:
         branches:
-            - "**"
-        tags:
-            - "v*.*.*"
+            - main
 
 jobs:
     pages:
@@ -43,15 +38,5 @@ jobs:
                   git push --force \
                     "https://${GITHUB_ACTOR}:${FORGEJO_TOKEN}@codeberg.org/${GITHUB_REPOSITORY}.git" \
                     HEAD:pages
-              env:
-                  FORGEJO_TOKEN: ${{ secrets.FORGEJO_TOKEN }}
-
-            - name: Tag versioned snapshot on pages branch
-              if: startsWith(github.ref, 'refs/tags/v')
-              run: |
-                  cd docs/book
-                  git push --force \
-                    "https://${GITHUB_ACTOR}:${FORGEJO_TOKEN}@codeberg.org/${GITHUB_REPOSITORY}.git" \
-                    HEAD:pages-${GITHUB_REF_NAME}
               env:
                   FORGEJO_TOKEN: ${{ secrets.FORGEJO_TOKEN }}

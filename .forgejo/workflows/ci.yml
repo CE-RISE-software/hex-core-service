@@ -4,13 +4,10 @@ on:
     push:
         branches:
             - "**"
-    pull_request:
-        branches:
-            - main
 
 jobs:
     check:
-        runs-on: codeberg-small
+        runs-on: codeberg-medium
 
         steps:
             - name: Checkout
