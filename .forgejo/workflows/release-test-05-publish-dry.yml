@@ -83,6 +83,7 @@ jobs:
               run: |
                   set -euo pipefail
                   cd dist/sdks/typescript
+                  npm pkg delete scripts.prepare
                   npm publish --dry-run --ignore-scripts
 
             - name: Build + twine check (PyPI dry run)
