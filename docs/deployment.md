@@ -1,4 +1,4 @@
-I# Deployment
+# Deployment
 
 This guide covers packaging, containerization, and deployment of the CE-RISE Hex Core Service.
 
