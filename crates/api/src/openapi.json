@@ -2,15 +2,40 @@
     "openapi": "3.0.3",
     "info": {
         "title": "CE-RISE Hex Core Service API",
-        "version": "0.1.0"
+        "version": "0.1.0",
+        "description": "Public and admin API for validating, creating, and querying records against versioned CE-RISE model artifacts."
     },
+    "tags": [
+        {
+            "name": "Models",
+            "description": "Model-specific validation and record operations."
+        },
+        {
+            "name": "Discovery",
+            "description": "Public endpoints for listing supported models and API metadata."
+        },
+        {
+            "name": "Admin",
+            "description": "Operational endpoints for health, readiness, status, and metrics."
+        }
+    ],
     "paths": {
         "/models": {
             "get": {
-                "summary": "List available models",
+                "tags": ["Discovery"],
+                "operationId": "listModels",
+                "summary": "List available model versions",
+                "description": "Returns model/version pairs currently loaded in the active registry index.",
                 "responses": {
                     "200": {
-                        "description": "OK"
+                        "description": "Registry models loaded successfully.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ModelsResponse"
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -21,6 +46,7 @@
                     "name": "model",
                     "in": "path",
                     "required": true,
+                    "description": "Model identifier, for example `re-indicators-specification`.",
                     "schema": {
                         "type": "string"
                     }
@@ -29,16 +55,72 @@
                     "name": "version",
                     "in": "path",
                     "required": true,
+                    "description": "Model version string, for example `0.0.3`.",
                     "schema": {
                         "type": "string"
                     }
                 }
             ],
             "post": {
-                "summary": "Validate payload",
+                "tags": ["Models"],
+                "operationId": "validateModelPayload",
+                "summary": "Validate payload against model rules",
+                "description": "Runs configured validators for the selected model/version and returns a merged validation report.",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ValidateRequest"
+                            }
+                        }
+                    }
+                },
                 "responses": {
                     "200": {
-                        "description": "Validation report"
+                        "description": "Validation report returned.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ValidationReport"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Authentication required or invalid token.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Requested model/version is not present in registry.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Payload is syntactically valid JSON but violates model constraints.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -49,6 +131,7 @@
                     "name": "model",
                     "in": "path",
                     "required": true,
+                    "description": "Model identifier.",
                     "schema": {
                         "type": "string"
                     }
@@ -57,16 +140,83 @@
                     "name": "version",
                     "in": "path",
                     "required": true,
+                    "description": "Model version.",
                     "schema": {
                         "type": "string"
                     }
                 }
             ],
             "post": {
-                "summary": "Create record",
+                "tags": ["Models"],
+                "operationId": "createRecord",
+                "summary": "Validate and create a record",
+                "description": "Validates input payload and writes a new record through the configured record store adapter.",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "Idempotency-Key",
+                        "in": "header",
+                        "required": true,
+                        "description": "Client-generated key used to deduplicate retries for side-effecting requests.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateRequest"
+                            }
+                        }
+                    }
+                },
                 "responses": {
                     "200": {
-                        "description": "Created/returned record"
+                        "description": "Record created (or idempotent replay returned existing result).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Record"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Authentication required or invalid token.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Idempotency conflict.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation failed.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -77,6 +227,7 @@
                     "name": "model",
                     "in": "path",
                     "required": true,
+                    "description": "Model identifier.",
                     "schema": {
                         "type": "string"
                     }
@@ -85,62 +236,347 @@
                     "name": "version",
                     "in": "path",
                     "required": true,
+                    "description": "Model version.",
                     "schema": {
                         "type": "string"
                     }
                 }
             ],
             "post": {
-                "summary": "Query records",
+                "tags": ["Models"],
+                "operationId": "queryRecords",
+                "summary": "Query records for a model version",
+                "description": "Applies a filter object and returns matching records provided by the record store adapter.",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/QueryRequest"
+                            }
+                        }
+                    }
+                },
                 "responses": {
                     "200": {
-                        "description": "Matching records"
+                        "description": "Matching records returned.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/QueryResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Authentication required or invalid token.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Requested model/version is not present in registry.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
                     }
                 }
             }
         },
         "/admin/health": {
             "get": {
+                "tags": ["Admin"],
+                "operationId": "health",
                 "summary": "Liveness probe",
+                "description": "Returns service process liveness.",
                 "responses": {
                     "200": {
-                        "description": "Alive"
+                        "description": "Service is alive.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HealthResponse"
+                                }
+                            }
+                        }
                     }
                 }
             }
         },
         "/admin/ready": {
             "get": {
+                "tags": ["Admin"],
+                "operationId": "ready",
                 "summary": "Readiness probe",
+                "description": "Returns readiness based on runtime adapter and registry state.",
                 "responses": {
                     "200": {
-                        "description": "Ready"
+                        "description": "Service is ready to accept traffic.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ReadyResponse"
+                                }
+                            }
+                        }
                     },
                     "503": {
-                        "description": "Not ready"
+                        "description": "Service is not ready.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ReadyResponse"
+                                }
+                            }
+                        }
                     }
                 }
             }
         },
         "/admin/status": {
             "get": {
+                "tags": ["Admin"],
+                "operationId": "status",
                 "summary": "Runtime status",
+                "description": "Returns runtime status payload useful for operations dashboards.",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
                 "responses": {
                     "200": {
-                        "description": "Status"
+                        "description": "Status payload returned.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": true
+                                }
+                            }
+                        }
                     }
                 }
             }
         },
         "/admin/metrics": {
             "get": {
+                "tags": ["Admin"],
+                "operationId": "metrics",
                 "summary": "Prometheus metrics",
+                "description": "Returns Prometheus exposition format when metrics are enabled.",
                 "responses": {
                     "200": {
-                        "description": "Metrics text"
+                        "description": "Metrics text returned.",
+                        "content": {
+                            "text/plain": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
                     },
                     "404": {
-                        "description": "Metrics disabled"
+                        "description": "Metrics endpoint disabled.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "securitySchemes": {
+            "bearerAuth": {
+                "type": "http",
+                "scheme": "bearer",
+                "bearerFormat": "JWT",
+                "description": "JWT bearer token for authenticated endpoints."
+            }
+        },
+        "schemas": {
+            "ModelVersion": {
+                "type": "object",
+                "required": ["id", "version"],
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "Model identifier."
+                    },
+                    "version": {
+                        "type": "string",
+                        "description": "Model version string."
+                    }
+                }
+            },
+            "ModelsResponse": {
+                "type": "object",
+                "required": ["models"],
+                "properties": {
+                    "models": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ModelVersion"
+                        }
+                    }
+                }
+            },
+            "ValidateRequest": {
+                "type": "object",
+                "required": ["payload"],
+                "properties": {
+                    "payload": {
+                        "type": "object",
+                        "additionalProperties": true,
+                        "description": "Candidate record payload to validate."
+                    }
+                }
+            },
+            "ValidationResult": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "JSON path or pointer of the failing field when available."
+                    },
+                    "message": {
+                        "type": "string",
+                        "description": "Human-readable validation message."
+                    },
+                    "severity": {
+                        "type": "string",
+                        "description": "Validation severity label when provided by validator."
+                    }
+                }
+            },
+            "ValidationReport": {
+                "type": "object",
+                "required": ["passed", "results"],
+                "properties": {
+                    "passed": {
+                        "type": "boolean",
+                        "description": "True when no blocking validation issues were found."
+                    },
+                    "results": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ValidationResult"
+                        }
+                    }
+                }
+            },
+            "CreateRequest": {
+                "type": "object",
+                "required": ["payload"],
+                "properties": {
+                    "payload": {
+                        "type": "object",
+                        "additionalProperties": true,
+                        "description": "Payload to validate and persist as a new record."
+                    }
+                }
+            },
+            "Record": {
+                "type": "object",
+                "required": ["id", "model", "version", "payload"],
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "Record identifier returned by the store adapter."
+                    },
+                    "model": {
+                        "type": "string",
+                        "description": "Model identifier used for this record."
+                    },
+                    "version": {
+                        "type": "string",
+                        "description": "Model version used for this record."
+                    },
+                    "payload": {
+                        "type": "object",
+                        "additionalProperties": true,
+                        "description": "Opaque business payload routed to the IO adapter."
+                    }
+                }
+            },
+            "QueryRequest": {
+                "type": "object",
+                "required": ["filter"],
+                "properties": {
+                    "filter": {
+                        "type": "object",
+                        "additionalProperties": true,
+                        "description": "Adapter-specific filter object for query execution."
+                    }
+                }
+            },
+            "QueryResponse": {
+                "type": "object",
+                "required": ["records"],
+                "properties": {
+                    "records": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Record"
+                        }
+                    }
+                }
+            },
+            "HealthResponse": {
+                "type": "object",
+                "required": ["status"],
+                "properties": {
+                    "status": {
+                        "type": "string",
+                        "description": "Health status string.",
+                        "example": "ok"
+                    }
+                }
+            },
+            "ReadyResponse": {
+                "type": "object",
+                "required": ["status"],
+                "properties": {
+                    "status": {
+                        "type": "string",
+                        "description": "Readiness status string.",
+                        "example": "ready"
+                    }
+                }
+            },
+            "ErrorResponse": {
+                "type": "object",
+                "required": ["code", "message"],
+                "properties": {
+                    "code": {
+                        "type": "string",
+                        "description": "Stable machine-readable error code."
+                    },
+                    "message": {
+                        "type": "string",
+                        "description": "Human-readable error message."
+                    },
+                    "details": {
+                        "description": "Optional error details payload.",
+                        "nullable": true
                     }
                 }
             }
