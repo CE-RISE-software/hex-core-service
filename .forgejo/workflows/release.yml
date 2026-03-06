@@ -295,7 +295,7 @@ jobs:
               id: tag
               run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
-            - name: Generate TypeScript, Python, and Go SDKs
+            - name: Generate TypeScript and Python SDKs
               env:
                   VERSION: ${{ steps.tag.outputs.VERSION }}
               run: |
@@ -316,12 +316,6 @@ jobs:
                     -o "dist/sdks/python" \
                     --additional-properties=packageName=ce_rise_hex_core_sdk,projectName=ce-rise-hex-core-sdk,packageVersion="${VERSION_NO_V}"
 
-                  npx -y @openapitools/openapi-generator-cli@2.15.3 generate \
-                    -g go \
-                    -i "crates/api/src/openapi.json" \
-                    -o "dist/sdks/go" \
-                    --additional-properties=packageName=hexcoresdk,enumClassPrefix=true,packageVersion="${VERSION_NO_V}"
-
             - name: Upload generated SDKs
               uses: https://github.com/actions/upload-artifact@v3
               with:
@@ -329,7 +323,6 @@ jobs:
                   path: |
                       dist/sdks/typescript
                       dist/sdks/python
-                      dist/sdks/go
 
     sdk-publish-npm:
         runs-on: codeberg-tiny
@@ -389,73 +382,3 @@ jobs:
                   python -m twine upload dist/* --username __token__ --password "${PYPI_API_TOKEN}"
               env:
                   PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
-
-    sdk-publish-go:
-        runs-on: codeberg-tiny
-        needs: sdk-generate
-        if: ${{ vars.SDK_PUBLISH_GO_ENABLED == 'true' }}
-        steps:
-            - name: Extract version tag
-              id: tag
-              run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
-
-            - name: Download generated SDK artifact
-              uses: https://github.com/actions/download-artifact@v3
-              with:
-                  name: sdk-${{ steps.tag.outputs.VERSION }}
-                  path: dist/sdks
-
-            - name: Publish Go SDK to dedicated Go module repository
-              env:
-                  VERSION: ${{ steps.tag.outputs.VERSION }}
-                  GO_SDK_REPO: ${{ vars.GO_SDK_REPO }}
-                  GO_SDK_BRANCH: ${{ vars.GO_SDK_BRANCH }}
-                  GO_SDK_GIT_HOST: ${{ vars.GO_SDK_GIT_HOST }}
-                  GO_SDK_TARGET_DIR: ${{ vars.GO_SDK_TARGET_DIR }}
-                  CI_PUSH_TOKEN: ${{ secrets.CI_PUSH_TOKEN }}
-              run: |
-                  set -euo pipefail
-                  BRANCH="${GO_SDK_BRANCH:-main}"
-                  HOST="${GO_SDK_GIT_HOST:-codeberg.org}"
-                  TARGET_DIR="${GO_SDK_TARGET_DIR:-.}"
-                  git clone "https://${GITHUB_ACTOR}:${CI_PUSH_TOKEN}@${HOST}/${GO_SDK_REPO}.git" /tmp/go-sdk-repo
-                  cd /tmp/go-sdk-repo
-                  git checkout "${BRANCH}" || git checkout -b "${BRANCH}"
-                  mkdir -p "${TARGET_DIR}"
-                  SRC_DIR="$GITHUB_WORKSPACE/dist/sdks/go"
-                  # Clean only allowlisted generated paths in destination.
-                  for d in api model .openapi-generator docs test; do
-                    rm -rf "${TARGET_DIR}/${d}"
-                  done
-                  rm -f "${TARGET_DIR}"/*.go "${TARGET_DIR}/go.mod" "${TARGET_DIR}/go.sum"
-
-                  # Copy only allowlisted generated paths from source.
-                  for d in api model .openapi-generator docs test; do
-                    if [ -d "${SRC_DIR}/${d}" ]; then
-                      cp -R "${SRC_DIR}/${d}" "${TARGET_DIR}/"
-                    fi
-                  done
-                  shopt -s nullglob
-                  for f in "${SRC_DIR}"/*.go "${SRC_DIR}/go.mod" "${SRC_DIR}/go.sum"; do
-                    if [ -e "${f}" ]; then
-                      cp "${f}" "${TARGET_DIR}/"
-                    fi
-                  done
-                  git config user.name "ce-rise-bot"
-                  git config user.email "ce-rise-bot@users.noreply.codeberg.org"
-                  if [ "${TARGET_DIR}" = "." ]; then
-                    shopt -s nullglob
-                    for p in api model .openapi-generator docs test go.mod go.sum *.go; do
-                      if [ -e "$p" ]; then
-                        git add -A "$p"
-                      fi
-                    done
-                  else
-                    git add "${TARGET_DIR}"
-                  fi
-                  if git diff --cached --quiet; then
-                    echo "No Go SDK changes to publish"
-                    exit 0
-                  fi
-                  git commit -m "Release Go SDK ${VERSION}"
-                  git push origin "${BRANCH}"
