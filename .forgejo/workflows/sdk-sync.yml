@@ -135,7 +135,7 @@ jobs:
                   git checkout "${BRANCH}" || git checkout -b "${BRANCH}"
 
                   mkdir -p "${TARGET_DIR}"
-                  for d in src .openapi-generator; do
+                  for d in src test docs .openapi-generator; do
                     rm -rf "${TARGET_DIR}/${d}"
                   done
                   rm -f \
@@ -143,7 +143,7 @@ jobs:
                     "${TARGET_DIR}/tsconfig.json" \
                     "${TARGET_DIR}/tsconfig.esm.json" \
                     "${TARGET_DIR}/.openapi-generator-ignore"
-                  for d in src .openapi-generator; do
+                  for d in src test docs .openapi-generator; do
                     if [ -d "${SRC_DIR}/${d}" ]; then
                       cp -R "${SRC_DIR}/${d}" "${TARGET_DIR}/"
                     fi
@@ -157,7 +157,7 @@ jobs:
                   git config user.name "ce-rise-bot"
                   git config user.email "ce-rise-bot@users.noreply.codeberg.org"
                   if [ "${TARGET_DIR}" = "." ]; then
-                    for p in src .openapi-generator package.json tsconfig.json tsconfig.esm.json .openapi-generator-ignore; do
+                    for p in src test docs .openapi-generator package.json tsconfig.json tsconfig.esm.json .openapi-generator-ignore; do
                       if [ -e "$p" ]; then
                         git add -A "$p"
                       fi
