@@ -382,3 +382,37 @@ jobs:
                   python -m twine upload dist/* --username __token__ --password "${PYPI_API_TOKEN}"
               env:
                   PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+
+    sdk-go-forward-tag:
+        runs-on: codeberg-tiny
+        if: ${{ vars.SDK_GO_FORWARD_TAG_ENABLED == 'true' }}
+        steps:
+            - name: Extract version tag
+              id: tag
+              run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+            - name: Forward release tag to Go SDK repository
+              env:
+                  VERSION: ${{ steps.tag.outputs.VERSION }}
+                  GO_SDK_REPO: ${{ vars.GO_SDK_REPO }}
+                  GO_SDK_GIT_HOST: ${{ vars.GO_SDK_GIT_HOST }}
+                  CI_PUSH_TOKEN: ${{ secrets.CI_PUSH_TOKEN }}
+              run: |
+                  set -euo pipefail
+                  HOST="${GO_SDK_GIT_HOST:-codeberg.org}"
+
+                  if [ -z "${GO_SDK_REPO:-}" ]; then
+                    echo "GO_SDK_REPO is required (example: CE-RISE-software/hex-core-sdk-go)"
+                    exit 1
+                  fi
+
+                  git clone "https://${GITHUB_ACTOR}:${CI_PUSH_TOKEN}@${HOST}/${GO_SDK_REPO}.git" /tmp/go-sdk-repo
+                  cd /tmp/go-sdk-repo
+
+                  if git show-ref --tags --verify --quiet "refs/tags/${VERSION}"; then
+                    echo "Tag ${VERSION} already exists in ${GO_SDK_REPO}; skipping."
+                    exit 0
+                  fi
+
+                  git tag -a "${VERSION}" -m "Release ${VERSION}"
+                  git push origin "refs/tags/${VERSION}"
