@@ -45,7 +45,8 @@ jobs:
                     -g typescript-fetch \
                     -i "crates/api/src/openapi.json" \
                     -o "dist/sdks/typescript" \
-                    --additional-properties=npmName=@ce-rise/hex-core-sdk,npmVersion="${TS_VERSION}",supportsES6=true,typescriptThreePlus=true
+                    --additional-properties=npmName=@ce-rise/hex-core-sdk,npmVersion="${TS_VERSION}",supportsES6=true,typescriptThreePlus=true \
+                    --global-property=apiDocs=true,modelDocs=true,apiTests=true,modelTests=true
 
                   npx -y @openapitools/openapi-generator-cli@2.15.3 generate \
                     -g python \
@@ -77,11 +78,11 @@ jobs:
                   git checkout "${BRANCH}" || git checkout -b "${BRANCH}"
 
                   mkdir -p "${TARGET_DIR}"
-                  for d in api model .openapi-generator docs test; do
+                  for d in api model docs test; do
                     rm -rf "${TARGET_DIR}/${d}"
                   done
                   rm -f "${TARGET_DIR}"/*.go "${TARGET_DIR}/go.mod" "${TARGET_DIR}/go.sum"
-                  for d in api model .openapi-generator docs test; do
+                  for d in api model docs test; do
                     if [ -d "${SRC_DIR}/${d}" ]; then
                       cp -R "${SRC_DIR}/${d}" "${TARGET_DIR}/"
                     fi
@@ -96,7 +97,7 @@ jobs:
                   git config user.name "ce-rise-bot"
                   git config user.email "ce-rise-bot@users.noreply.codeberg.org"
                   if [ "${TARGET_DIR}" = "." ]; then
-                    for p in api model .openapi-generator docs test go.mod go.sum *.go; do
+                    for p in api model docs test go.mod go.sum *.go; do
                       if [ -e "$p" ]; then
                         git add -A "$p"
                       fi
@@ -135,20 +136,19 @@ jobs:
                   git checkout "${BRANCH}" || git checkout -b "${BRANCH}"
 
                   mkdir -p "${TARGET_DIR}"
-                  for d in src test docs .openapi-generator; do
+                  for d in src test docs; do
                     rm -rf "${TARGET_DIR}/${d}"
                   done
                   rm -f \
                     "${TARGET_DIR}/package.json" \
                     "${TARGET_DIR}/tsconfig.json" \
-                    "${TARGET_DIR}/tsconfig.esm.json" \
-                    "${TARGET_DIR}/.openapi-generator-ignore"
-                  for d in src test docs .openapi-generator; do
+                    "${TARGET_DIR}/tsconfig.esm.json"
+                  for d in src test docs; do
                     if [ -d "${SRC_DIR}/${d}" ]; then
                       cp -R "${SRC_DIR}/${d}" "${TARGET_DIR}/"
                     fi
                   done
-                  for f in package.json tsconfig.json tsconfig.esm.json .openapi-generator-ignore; do
+                  for f in package.json tsconfig.json tsconfig.esm.json; do
                     if [ -f "${SRC_DIR}/${f}" ]; then
                       cp "${SRC_DIR}/${f}" "${TARGET_DIR}/"
                     fi
@@ -157,7 +157,7 @@ jobs:
                   git config user.name "ce-rise-bot"
                   git config user.email "ce-rise-bot@users.noreply.codeberg.org"
                   if [ "${TARGET_DIR}" = "." ]; then
-                    for p in src test docs .openapi-generator package.json tsconfig.json tsconfig.esm.json .openapi-generator-ignore; do
+                    for p in src test docs package.json tsconfig.json tsconfig.esm.json; do
                       if [ -e "$p" ]; then
                         git add -A "$p"
                       fi
@@ -196,21 +196,20 @@ jobs:
                   git checkout "${BRANCH}" || git checkout -b "${BRANCH}"
 
                   mkdir -p "${TARGET_DIR}"
-                  for d in ce_rise_hex_core_sdk test docs .openapi-generator; do
+                  for d in ce_rise_hex_core_sdk test docs; do
                     rm -rf "${TARGET_DIR}/${d}"
                   done
                   rm -f \
                     "${TARGET_DIR}/pyproject.toml" \
                     "${TARGET_DIR}/setup.py" \
                     "${TARGET_DIR}/requirements.txt" \
-                    "${TARGET_DIR}/requirements-dev.txt" \
-                    "${TARGET_DIR}/.openapi-generator-ignore"
-                  for d in ce_rise_hex_core_sdk test docs .openapi-generator; do
+                    "${TARGET_DIR}/requirements-dev.txt"
+                  for d in ce_rise_hex_core_sdk test docs; do
                     if [ -d "${SRC_DIR}/${d}" ]; then
                       cp -R "${SRC_DIR}/${d}" "${TARGET_DIR}/"
                     fi
                   done
-                  for f in pyproject.toml setup.py requirements.txt requirements-dev.txt .openapi-generator-ignore; do
+                  for f in pyproject.toml setup.py requirements.txt requirements-dev.txt; do
                     if [ -f "${SRC_DIR}/${f}" ]; then
                       cp "${SRC_DIR}/${f}" "${TARGET_DIR}/"
                     fi
@@ -219,7 +218,7 @@ jobs:
                   git config user.name "ce-rise-bot"
                   git config user.email "ce-rise-bot@users.noreply.codeberg.org"
                   if [ "${TARGET_DIR}" = "." ]; then
-                    for p in ce_rise_hex_core_sdk test docs .openapi-generator pyproject.toml setup.py requirements.txt requirements-dev.txt .openapi-generator-ignore; do
+                    for p in ce_rise_hex_core_sdk test docs pyproject.toml setup.py requirements.txt requirements-dev.txt; do
                       if [ -e "$p" ]; then
                         git add -A "$p"
                       fi
