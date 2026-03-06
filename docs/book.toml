@@ -10,3 +10,4 @@ build-dir = "book"
 
 [output.html]
 theme = "theme"
+git-repository-url = "https://codeberg.org/CE-RISE-software/hex-core-service"
