@@ -57,3 +57,58 @@ jobs:
               with:
                   name: release-test-sdk-${{ github.run_number }}
                   path: dist/sdks
+
+    publish-go-sdk-to-repo-test:
+        runs-on: codeberg-small
+        needs: sdk-generate
+        steps:
+            - name: Download generated SDKs
+              uses: https://github.com/actions/download-artifact@v3
+              with:
+                  name: release-test-sdk-${{ github.run_number }}
+                  path: dist/sdks
+
+            - name: Publish generated Go SDK to external repo (non-destructive)
+              env:
+                  GO_SDK_REPO: ${{ vars.GO_SDK_REPO }}
+                  GO_SDK_BRANCH: ${{ vars.GO_SDK_BRANCH }}
+                  GO_SDK_GIT_HOST: ${{ vars.GO_SDK_GIT_HOST }}
+                  GO_SDK_TARGET_DIR: ${{ vars.GO_SDK_TARGET_DIR }}
+                  CI_PUSH_TOKEN: ${{ secrets.CI_PUSH_TOKEN }}
+              run: |
+                  set -euo pipefail
+                  BRANCH="${GO_SDK_BRANCH:-main}"
+                  HOST="${GO_SDK_GIT_HOST:-codeberg.org}"
+                  TARGET_DIR="${GO_SDK_TARGET_DIR:-.}"
+
+                  if [ -z "${GO_SDK_REPO:-}" ]; then
+                    echo "GO_SDK_REPO is required (example: CE-RISE-software/hex-core-sdk-go)"
+                    exit 1
+                  fi
+
+                  git clone "https://${GITHUB_ACTOR}:${CI_PUSH_TOKEN}@${HOST}/${GO_SDK_REPO}.git" /tmp/go-sdk-repo
+                  cd /tmp/go-sdk-repo
+                  git checkout "${BRANCH}" || git checkout -b "${BRANCH}"
+
+                  if [ "${TARGET_DIR}" = "." ]; then
+                    cp -R "$GITHUB_WORKSPACE/dist/sdks/go/." .
+                  else
+                    mkdir -p "$(dirname "${TARGET_DIR}")"
+                    rm -rf "${TARGET_DIR}"
+                    mkdir -p "${TARGET_DIR}"
+                    cp -R "$GITHUB_WORKSPACE/dist/sdks/go/." "${TARGET_DIR}/"
+                  fi
+
+                  git config user.name "ce-rise-bot"
+                  git config user.email "ce-rise-bot@users.noreply.codeberg.org"
+                  if [ "${TARGET_DIR}" = "." ]; then
+                    git add -A
+                  else
+                    git add "${TARGET_DIR}"
+                  fi
+                  if git diff --cached --quiet; then
+                    echo "No Go SDK changes to publish"
+                    exit 0
+                  fi
+                  git commit -m "Test publish Go SDK from run ${GITHUB_RUN_NUMBER} (${GITHUB_SHA})"
+                  git push origin "${BRANCH}"

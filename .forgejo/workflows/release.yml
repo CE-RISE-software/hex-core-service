@@ -410,23 +410,35 @@ jobs:
                   VERSION: ${{ steps.tag.outputs.VERSION }}
                   GO_SDK_REPO: ${{ vars.GO_SDK_REPO }}
                   GO_SDK_BRANCH: ${{ vars.GO_SDK_BRANCH }}
-                  GO_SDK_REPO_TOKEN: ${{ secrets.GO_SDK_REPO_TOKEN }}
+                  GO_SDK_GIT_HOST: ${{ vars.GO_SDK_GIT_HOST }}
+                  GO_SDK_TARGET_DIR: ${{ vars.GO_SDK_TARGET_DIR }}
+                  CI_PUSH_TOKEN: ${{ secrets.CI_PUSH_TOKEN }}
               run: |
                   set -euo pipefail
                   BRANCH="${GO_SDK_BRANCH:-main}"
-                  git clone "https://x-token:${GO_SDK_REPO_TOKEN}@github.com/${GO_SDK_REPO}.git" /tmp/go-sdk-repo
+                  HOST="${GO_SDK_GIT_HOST:-codeberg.org}"
+                  TARGET_DIR="${GO_SDK_TARGET_DIR:-.}"
+                  git clone "https://${GITHUB_ACTOR}:${CI_PUSH_TOKEN}@${HOST}/${GO_SDK_REPO}.git" /tmp/go-sdk-repo
                   cd /tmp/go-sdk-repo
                   git checkout "${BRANCH}" || git checkout -b "${BRANCH}"
-                  find . -mindepth 1 -maxdepth 1 ! -name ".git" -exec rm -rf {} +
-                  cp -R "$GITHUB_WORKSPACE/dist/sdks/go/." .
+                  if [ "${TARGET_DIR}" = "." ]; then
+                    cp -R "$GITHUB_WORKSPACE/dist/sdks/go/." .
+                  else
+                    mkdir -p "$(dirname "${TARGET_DIR}")"
+                    rm -rf "${TARGET_DIR}"
+                    mkdir -p "${TARGET_DIR}"
+                    cp -R "$GITHUB_WORKSPACE/dist/sdks/go/." "${TARGET_DIR}/"
+                  fi
                   git config user.name "ce-rise-bot"
-                  git config user.email "ce-rise-bot@users.noreply.github.com"
-                  git add -A
+                  git config user.email "ce-rise-bot@users.noreply.codeberg.org"
+                  if [ "${TARGET_DIR}" = "." ]; then
+                    git add -A
+                  else
+                    git add "${TARGET_DIR}"
+                  fi
                   if git diff --cached --quiet; then
                     echo "No Go SDK changes to publish"
                     exit 0
                   fi
                   git commit -m "Release Go SDK ${VERSION}"
-                  git tag -a "${VERSION}" -m "Release ${VERSION}" || true
                   git push origin "${BRANCH}"
-                  git push origin "${VERSION}" || true
