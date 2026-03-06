@@ -421,18 +421,27 @@ jobs:
                   git clone "https://${GITHUB_ACTOR}:${CI_PUSH_TOKEN}@${HOST}/${GO_SDK_REPO}.git" /tmp/go-sdk-repo
                   cd /tmp/go-sdk-repo
                   git checkout "${BRANCH}" || git checkout -b "${BRANCH}"
-                  if [ "${TARGET_DIR}" = "." ]; then
-                    cp -R "$GITHUB_WORKSPACE/dist/sdks/go/." .
-                  else
-                    mkdir -p "$(dirname "${TARGET_DIR}")"
-                    rm -rf "${TARGET_DIR}"
-                    mkdir -p "${TARGET_DIR}"
-                    cp -R "$GITHUB_WORKSPACE/dist/sdks/go/." "${TARGET_DIR}/"
-                  fi
+                  mkdir -p "${TARGET_DIR}"
+                  rsync -a --delete \
+                    --include "api/***" \
+                    --include "model/***" \
+                    --include ".openapi-generator/***" \
+                    --include "docs/***" \
+                    --include "test/***" \
+                    --include "*.go" \
+                    --include "go.mod" \
+                    --include "go.sum" \
+                    --exclude "*" \
+                    "$GITHUB_WORKSPACE/dist/sdks/go/" "${TARGET_DIR}/"
                   git config user.name "ce-rise-bot"
                   git config user.email "ce-rise-bot@users.noreply.codeberg.org"
                   if [ "${TARGET_DIR}" = "." ]; then
-                    git add -A
+                    shopt -s nullglob
+                    for p in api model .openapi-generator docs test go.mod go.sum *.go; do
+                      if [ -e "$p" ]; then
+                        git add -A "$p"
+                      fi
+                    done
                   else
                     git add "${TARGET_DIR}"
                   fi
