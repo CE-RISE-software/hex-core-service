@@ -1,0 +1,61 @@
+name: Release Test - Docker to Scaleway
+
+on:
+    workflow_dispatch:
+        inputs:
+            push_image:
+                description: "Push image to registry (true/false)"
+                required: true
+                default: "true"
+            image_name:
+                description: "Image name inside registry namespace"
+                required: true
+                default: "hex-core-service"
+
+jobs:
+    docker-build-and-push:
+        runs-on: codeberg-medium
+        steps:
+            - name: Checkout main
+              uses: actions/checkout@v4
+              with:
+                  ref: main
+
+            - name: Compute image tags
+              id: meta
+              run: |
+                  set -euo pipefail
+                  SHORT_SHA="$(printf '%s' "${GITHUB_SHA}" | cut -c1-12)"
+                  echo "SHORT_SHA=${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+                  echo "TEST_TAG=test-${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+
+            - name: Build container image
+              env:
+                  IMAGE_NAME: ${{ inputs.image_name }}
+              run: |
+                  set -euo pipefail
+                  docker build \
+                    -t ${{ vars.REGISTRY_HOST }}/${{ vars.REGISTRY_NAMESPACE }}/${IMAGE_NAME}:${{ steps.meta.outputs.SHORT_SHA }} \
+                    -t ${{ vars.REGISTRY_HOST }}/${{ vars.REGISTRY_NAMESPACE }}/${IMAGE_NAME}:${{ steps.meta.outputs.TEST_TAG }} \
+                    .
+
+            - name: Log in to container registry
+              if: ${{ inputs.push_image == 'true' }}
+              run: echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login ${{ vars.REGISTRY_HOST }} -u ${{ secrets.REGISTRY_USERNAME }} --password-stdin
+
+            - name: Push container image tags
+              if: ${{ inputs.push_image == 'true' }}
+              env:
+                  IMAGE_NAME: ${{ inputs.image_name }}
+              run: |
+                  set -euo pipefail
+                  docker push ${{ vars.REGISTRY_HOST }}/${{ vars.REGISTRY_NAMESPACE }}/${IMAGE_NAME}:${{ steps.meta.outputs.SHORT_SHA }}
+                  docker push ${{ vars.REGISTRY_HOST }}/${{ vars.REGISTRY_NAMESPACE }}/${IMAGE_NAME}:${{ steps.meta.outputs.TEST_TAG }}
+
+            - name: Output published references
+              env:
+                  IMAGE_NAME: ${{ inputs.image_name }}
+              run: |
+                  echo "Built image tags:"
+                  echo "${{ vars.REGISTRY_HOST }}/${{ vars.REGISTRY_NAMESPACE }}/${IMAGE_NAME}:${{ steps.meta.outputs.SHORT_SHA }}"
+                  echo "${{ vars.REGISTRY_HOST }}/${{ vars.REGISTRY_NAMESPACE }}/${IMAGE_NAME}:${{ steps.meta.outputs.TEST_TAG }}"
