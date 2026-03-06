@@ -46,7 +46,7 @@ jobs:
                     -i "crates/api/src/openapi.json" \
                     -o "dist/sdks/typescript" \
                     --additional-properties=npmName=@ce-rise/hex-core-sdk,npmVersion="${TS_VERSION}",withSeparateModelsAndApi=true,apiPackage=apis,modelPackage=models \
-                    --global-property=apiDocs=true,modelDocs=true,apiTests=true,modelTests=true
+                    --global-property=apis,models,supportingFiles,apiDocs=true,modelDocs=true,apiTests=true,modelTests=true
 
                   npx -y @openapitools/openapi-generator-cli@2.15.3 generate \
                     -g python \

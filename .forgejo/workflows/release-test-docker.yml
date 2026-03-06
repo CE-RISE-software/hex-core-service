@@ -1,30 +1,18 @@
-name: Release Test - Docker to Scaleway
+name: Release Test - Docker to Scaleway (Kaniko/Crane)
 
 on:
     workflow_dispatch:
 
 jobs:
-    docker-build-and-push:
+    docker-build-and-push-test:
         runs-on: codeberg-medium
+        container:
+            image: gcr.io/kaniko-project/executor:debug
         steps:
             - name: Checkout main
               uses: actions/checkout@v4
               with:
                   ref: main
-
-            - name: Select container engine
-              run: |
-                  set -euo pipefail
-                  if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
-                    echo "CONTAINER_CLI=docker" >> "$GITHUB_ENV"
-                    exit 0
-                  fi
-                  if command -v podman >/dev/null 2>&1; then
-                    echo "CONTAINER_CLI=podman" >> "$GITHUB_ENV"
-                    exit 0
-                  fi
-                  echo "No usable container engine found (docker daemon unavailable and podman missing)."
-                  exit 1
 
             - name: Compute image tags
               id: meta
@@ -34,25 +22,57 @@ jobs:
                   echo "SHORT_SHA=${SHORT_SHA}" >> "$GITHUB_OUTPUT"
                   echo "TEST_TAG=test-${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
 
-            - name: Build container image
+            - name: Build and push test image with Kaniko
+              env:
+                  SHORT_SHA: ${{ steps.meta.outputs.SHORT_SHA }}
+                  TEST_TAG: ${{ steps.meta.outputs.TEST_TAG }}
+                  REGISTRY_HOST: ${{ vars.REGISTRY_HOST }}
+                  REGISTRY_NAMESPACE: ${{ vars.REGISTRY_NAMESPACE }}
+                  REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+                  REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
               run: |
                   set -euo pipefail
-                  ${CONTAINER_CLI} build \
-                    -t ${{ vars.REGISTRY_HOST }}/${{ vars.REGISTRY_NAMESPACE }}/hex-core-service:${{ steps.meta.outputs.SHORT_SHA }} \
-                    -t ${{ vars.REGISTRY_HOST }}/${{ vars.REGISTRY_NAMESPACE }}/hex-core-service:${{ steps.meta.outputs.TEST_TAG }} \
-                    .
+                  IMAGE_BASE="${REGISTRY_HOST}/${REGISTRY_NAMESPACE}/hex-core-service"
+                  AUTH="$(printf '%s:%s' "${REGISTRY_USERNAME}" "${REGISTRY_PASSWORD}" | base64 | tr -d '\n')"
+                  mkdir -p /kaniko/.docker
+                  cat > /kaniko/.docker/config.json <<EOF
+                  {"auths":{"${REGISTRY_HOST}":{"auth":"${AUTH}"}}}
+                  EOF
+                  /kaniko/executor \
+                    --context "${GITHUB_WORKSPACE}" \
+                    --dockerfile "${GITHUB_WORKSPACE}/Dockerfile" \
+                    --destination "${IMAGE_BASE}:${SHORT_SHA}" \
+                    --destination "${IMAGE_BASE}:${TEST_TAG}"
 
-            - name: Log in to container registry
-              run: echo "${{ secrets.REGISTRY_PASSWORD }}" | ${CONTAINER_CLI} login ${{ vars.REGISTRY_HOST }} -u ${{ secrets.REGISTRY_USERNAME }} --password-stdin
-
-            - name: Push container image tags
+    docker-tag-test-latest:
+        runs-on: codeberg-small
+        needs:
+            - docker-build-and-push-test
+        container:
+            image: gcr.io/go-containerregistry/crane:debug
+        steps:
+            - name: Compute image tags
+              id: meta
               run: |
                   set -euo pipefail
-                  ${CONTAINER_CLI} push ${{ vars.REGISTRY_HOST }}/${{ vars.REGISTRY_NAMESPACE }}/hex-core-service:${{ steps.meta.outputs.SHORT_SHA }}
-                  ${CONTAINER_CLI} push ${{ vars.REGISTRY_HOST }}/${{ vars.REGISTRY_NAMESPACE }}/hex-core-service:${{ steps.meta.outputs.TEST_TAG }}
+                  SHORT_SHA="$(printf '%s' "${GITHUB_SHA}" | cut -c1-12)"
+                  echo "SHORT_SHA=${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+                  echo "TEST_TAG=test-${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
 
-            - name: Output published references
+            - name: Tag test-latest with Crane
+              env:
+                  SHORT_SHA: ${{ steps.meta.outputs.SHORT_SHA }}
+                  TEST_TAG: ${{ steps.meta.outputs.TEST_TAG }}
+                  REGISTRY_HOST: ${{ vars.REGISTRY_HOST }}
+                  REGISTRY_NAMESPACE: ${{ vars.REGISTRY_NAMESPACE }}
+                  REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+                  REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
               run: |
-                  echo "Built image tags:"
-                  echo "${{ vars.REGISTRY_HOST }}/${{ vars.REGISTRY_NAMESPACE }}/hex-core-service:${{ steps.meta.outputs.SHORT_SHA }}"
-                  echo "${{ vars.REGISTRY_HOST }}/${{ vars.REGISTRY_NAMESPACE }}/hex-core-service:${{ steps.meta.outputs.TEST_TAG }}"
+                  set -euo pipefail
+                  IMAGE_BASE="${REGISTRY_HOST}/${REGISTRY_NAMESPACE}/hex-core-service"
+                  crane auth login -u "${REGISTRY_USERNAME}" -p "${REGISTRY_PASSWORD}" "${REGISTRY_HOST}"
+                  crane copy "${IMAGE_BASE}:${SHORT_SHA}" "${IMAGE_BASE}:test-latest"
+                  echo "Pushed:"
+                  echo "${IMAGE_BASE}:${SHORT_SHA}"
+                  echo "${IMAGE_BASE}:${TEST_TAG}"
+                  echo "${IMAGE_BASE}:test-latest"

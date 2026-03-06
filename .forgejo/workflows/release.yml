@@ -135,22 +135,64 @@ jobs:
               id: tag
               run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
-            - name: Build container image
-              run: |
-                  docker build \
-                    -t ${{ vars.REGISTRY_HOST }}/${{ vars.REGISTRY_NAMESPACE }}/hex-core-service:${{ steps.tag.outputs.VERSION }} \
-                    -t ${{ vars.REGISTRY_HOST }}/${{ vars.REGISTRY_NAMESPACE }}/hex-core-service:${{ github.sha }} \
-                    -t ${{ vars.REGISTRY_HOST }}/${{ vars.REGISTRY_NAMESPACE }}/hex-core-service:latest \
-                    .
+    docker-build-and-push:
+        runs-on: codeberg-medium
+        needs:
+            - release
+        container:
+            image: gcr.io/kaniko-project/executor:debug
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
 
-            - name: Log in to container registry
-              run: echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login ${{ vars.REGISTRY_HOST }} -u ${{ secrets.REGISTRY_USERNAME }} --password-stdin
+            - name: Extract version tag
+              id: tag
+              run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
-            - name: Push container image
+            - name: Build and push image with Kaniko
+              env:
+                  VERSION: ${{ steps.tag.outputs.VERSION }}
+                  REGISTRY_HOST: ${{ vars.REGISTRY_HOST }}
+                  REGISTRY_NAMESPACE: ${{ vars.REGISTRY_NAMESPACE }}
+                  REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+                  REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
               run: |
-                  docker push ${{ vars.REGISTRY_HOST }}/${{ vars.REGISTRY_NAMESPACE }}/hex-core-service:${{ steps.tag.outputs.VERSION }}
-                  docker push ${{ vars.REGISTRY_HOST }}/${{ vars.REGISTRY_NAMESPACE }}/hex-core-service:${{ github.sha }}
-                  docker push ${{ vars.REGISTRY_HOST }}/${{ vars.REGISTRY_NAMESPACE }}/hex-core-service:latest
+                  set -euo pipefail
+                  IMAGE_BASE="${REGISTRY_HOST}/${REGISTRY_NAMESPACE}/hex-core-service"
+                  AUTH="$(printf '%s:%s' "${REGISTRY_USERNAME}" "${REGISTRY_PASSWORD}" | base64 | tr -d '\n')"
+                  mkdir -p /kaniko/.docker
+                  cat > /kaniko/.docker/config.json <<EOF
+                  {"auths":{"${REGISTRY_HOST}":{"auth":"${AUTH}"}}}
+                  EOF
+                  /kaniko/executor \
+                    --context "${GITHUB_WORKSPACE}" \
+                    --dockerfile "${GITHUB_WORKSPACE}/Dockerfile" \
+                    --destination "${IMAGE_BASE}:${VERSION}" \
+                    --destination "${IMAGE_BASE}:${GITHUB_SHA}"
+
+    docker-tag-latest:
+        runs-on: codeberg-small
+        needs:
+            - docker-build-and-push
+        container:
+            image: gcr.io/go-containerregistry/crane:debug
+        steps:
+            - name: Extract version tag
+              id: tag
+              run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+            - name: Tag latest with Crane
+              env:
+                  VERSION: ${{ steps.tag.outputs.VERSION }}
+                  REGISTRY_HOST: ${{ vars.REGISTRY_HOST }}
+                  REGISTRY_NAMESPACE: ${{ vars.REGISTRY_NAMESPACE }}
+                  REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+                  REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+              run: |
+                  set -euo pipefail
+                  IMAGE_BASE="${REGISTRY_HOST}/${REGISTRY_NAMESPACE}/hex-core-service"
+                  crane auth login -u "${REGISTRY_USERNAME}" -p "${REGISTRY_PASSWORD}" "${REGISTRY_HOST}"
+                  crane copy "${IMAGE_BASE}:${VERSION}" "${IMAGE_BASE}:latest"
 
     cli-distribution:
         runs-on: codeberg-tiny
