@@ -416,3 +416,71 @@ jobs:
 
                   git tag -a "${VERSION}" -m "Release ${VERSION}"
                   git push origin "refs/tags/${VERSION}"
+
+    sdk-ts-forward-tag:
+        runs-on: codeberg-tiny
+        if: ${{ vars.SDK_TS_FORWARD_TAG_ENABLED == 'true' }}
+        steps:
+            - name: Extract version tag
+              id: tag
+              run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+            - name: Forward release tag to TypeScript SDK repository
+              env:
+                  VERSION: ${{ steps.tag.outputs.VERSION }}
+                  TS_SDK_REPO: ${{ vars.TS_SDK_REPO }}
+                  TS_SDK_GIT_HOST: ${{ vars.TS_SDK_GIT_HOST }}
+                  CI_PUSH_TOKEN: ${{ secrets.CI_PUSH_TOKEN }}
+              run: |
+                  set -euo pipefail
+                  HOST="${TS_SDK_GIT_HOST:-codeberg.org}"
+
+                  if [ -z "${TS_SDK_REPO:-}" ]; then
+                    echo "TS_SDK_REPO is required (example: CE-RISE-software/hex-core-sdk-typescript)"
+                    exit 1
+                  fi
+
+                  git clone "https://${GITHUB_ACTOR}:${CI_PUSH_TOKEN}@${HOST}/${TS_SDK_REPO}.git" /tmp/ts-sdk-repo
+                  cd /tmp/ts-sdk-repo
+
+                  if git show-ref --tags --verify --quiet "refs/tags/${VERSION}"; then
+                    echo "Tag ${VERSION} already exists in ${TS_SDK_REPO}; skipping."
+                    exit 0
+                  fi
+
+                  git tag -a "${VERSION}" -m "Release ${VERSION}"
+                  git push origin "refs/tags/${VERSION}"
+
+    sdk-py-forward-tag:
+        runs-on: codeberg-tiny
+        if: ${{ vars.SDK_PY_FORWARD_TAG_ENABLED == 'true' }}
+        steps:
+            - name: Extract version tag
+              id: tag
+              run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+            - name: Forward release tag to Python SDK repository
+              env:
+                  VERSION: ${{ steps.tag.outputs.VERSION }}
+                  PY_SDK_REPO: ${{ vars.PY_SDK_REPO }}
+                  PY_SDK_GIT_HOST: ${{ vars.PY_SDK_GIT_HOST }}
+                  CI_PUSH_TOKEN: ${{ secrets.CI_PUSH_TOKEN }}
+              run: |
+                  set -euo pipefail
+                  HOST="${PY_SDK_GIT_HOST:-codeberg.org}"
+
+                  if [ -z "${PY_SDK_REPO:-}" ]; then
+                    echo "PY_SDK_REPO is required (example: CE-RISE-software/hex-core-sdk-python)"
+                    exit 1
+                  fi
+
+                  git clone "https://${GITHUB_ACTOR}:${CI_PUSH_TOKEN}@${HOST}/${PY_SDK_REPO}.git" /tmp/py-sdk-repo
+                  cd /tmp/py-sdk-repo
+
+                  if git show-ref --tags --verify --quiet "refs/tags/${VERSION}"; then
+                    echo "Tag ${VERSION} already exists in ${PY_SDK_REPO}; skipping."
+                    exit 0
+                  fi
+
+                  git tag -a "${VERSION}" -m "Release ${VERSION}"
+                  git push origin "refs/tags/${VERSION}"
