@@ -12,6 +12,20 @@ jobs:
               with:
                   ref: main
 
+            - name: Select container engine
+              run: |
+                  set -euo pipefail
+                  if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+                    echo "CONTAINER_CLI=docker" >> "$GITHUB_ENV"
+                    exit 0
+                  fi
+                  if command -v podman >/dev/null 2>&1; then
+                    echo "CONTAINER_CLI=podman" >> "$GITHUB_ENV"
+                    exit 0
+                  fi
+                  echo "No usable container engine found (docker daemon unavailable and podman missing)."
+                  exit 1
+
             - name: Compute image tags
               id: meta
               run: |
@@ -23,19 +37,19 @@ jobs:
             - name: Build container image
               run: |
                   set -euo pipefail
-                  docker build \
+                  ${CONTAINER_CLI} build \
                     -t ${{ vars.REGISTRY_HOST }}/${{ vars.REGISTRY_NAMESPACE }}/hex-core-service:${{ steps.meta.outputs.SHORT_SHA }} \
                     -t ${{ vars.REGISTRY_HOST }}/${{ vars.REGISTRY_NAMESPACE }}/hex-core-service:${{ steps.meta.outputs.TEST_TAG }} \
                     .
 
             - name: Log in to container registry
-              run: echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login ${{ vars.REGISTRY_HOST }} -u ${{ secrets.REGISTRY_USERNAME }} --password-stdin
+              run: echo "${{ secrets.REGISTRY_PASSWORD }}" | ${CONTAINER_CLI} login ${{ vars.REGISTRY_HOST }} -u ${{ secrets.REGISTRY_USERNAME }} --password-stdin
 
             - name: Push container image tags
               run: |
                   set -euo pipefail
-                  docker push ${{ vars.REGISTRY_HOST }}/${{ vars.REGISTRY_NAMESPACE }}/hex-core-service:${{ steps.meta.outputs.SHORT_SHA }}
-                  docker push ${{ vars.REGISTRY_HOST }}/${{ vars.REGISTRY_NAMESPACE }}/hex-core-service:${{ steps.meta.outputs.TEST_TAG }}
+                  ${CONTAINER_CLI} push ${{ vars.REGISTRY_HOST }}/${{ vars.REGISTRY_NAMESPACE }}/hex-core-service:${{ steps.meta.outputs.SHORT_SHA }}
+                  ${CONTAINER_CLI} push ${{ vars.REGISTRY_HOST }}/${{ vars.REGISTRY_NAMESPACE }}/hex-core-service:${{ steps.meta.outputs.TEST_TAG }}
 
             - name: Output published references
               run: |

@@ -139,25 +139,16 @@ jobs:
                   for d in src test docs; do
                     rm -rf "${TARGET_DIR}/${d}"
                   done
-                  rm -f \
-                    "${TARGET_DIR}/package.json" \
-                    "${TARGET_DIR}/tsconfig.json" \
-                    "${TARGET_DIR}/tsconfig.esm.json"
                   for d in src test docs; do
                     if [ -d "${SRC_DIR}/${d}" ]; then
                       cp -R "${SRC_DIR}/${d}" "${TARGET_DIR}/"
-                    fi
-                  done
-                  for f in package.json tsconfig.json tsconfig.esm.json; do
-                    if [ -f "${SRC_DIR}/${f}" ]; then
-                      cp "${SRC_DIR}/${f}" "${TARGET_DIR}/"
                     fi
                   done
 
                   git config user.name "ce-rise-bot"
                   git config user.email "ce-rise-bot@users.noreply.codeberg.org"
                   if [ "${TARGET_DIR}" = "." ]; then
-                    for p in src test docs package.json tsconfig.json tsconfig.esm.json; do
+                    for p in src test docs; do
                       if [ -e "$p" ]; then
                         git add -A "$p"
                       fi
@@ -199,26 +190,16 @@ jobs:
                   for d in ce_rise_hex_core_sdk test docs; do
                     rm -rf "${TARGET_DIR}/${d}"
                   done
-                  rm -f \
-                    "${TARGET_DIR}/pyproject.toml" \
-                    "${TARGET_DIR}/setup.py" \
-                    "${TARGET_DIR}/requirements.txt" \
-                    "${TARGET_DIR}/requirements-dev.txt"
                   for d in ce_rise_hex_core_sdk test docs; do
                     if [ -d "${SRC_DIR}/${d}" ]; then
                       cp -R "${SRC_DIR}/${d}" "${TARGET_DIR}/"
-                    fi
-                  done
-                  for f in pyproject.toml setup.py requirements.txt requirements-dev.txt; do
-                    if [ -f "${SRC_DIR}/${f}" ]; then
-                      cp "${SRC_DIR}/${f}" "${TARGET_DIR}/"
                     fi
                   done
 
                   git config user.name "ce-rise-bot"
                   git config user.email "ce-rise-bot@users.noreply.codeberg.org"
                   if [ "${TARGET_DIR}" = "." ]; then
-                    for p in ce_rise_hex_core_sdk test docs pyproject.toml setup.py requirements.txt requirements-dev.txt; do
+                    for p in ce_rise_hex_core_sdk test docs; do
                       if [ -e "$p" ]; then
                         git add -A "$p"
                       fi
