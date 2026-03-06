@@ -10,3 +10,4 @@ build-dir = "book"
 [output.html]
 git-repository-url = "https://codeberg.org/CE-RISE-software/hex-core-service"
 sidebar-header-nav = true
+additional-js = ["theme/custom.js"]
