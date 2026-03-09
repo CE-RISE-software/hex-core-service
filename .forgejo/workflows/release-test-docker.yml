@@ -16,17 +16,15 @@ jobs:
                     echo "CONTEXT_DIR=${GITHUB_WORKSPACE}" >> "$GITHUB_ENV"
                     exit 0
                   fi
-                  if [ -f "/workspace/CE-RISE-software/hex-core-service/Dockerfile" ]; then
-                    echo "CONTEXT_DIR=/workspace/CE-RISE-software/hex-core-service" >> "$GITHUB_ENV"
-                    exit 0
-                  fi
-                  if [ -f "/workspace/Dockerfile" ]; then
-                    echo "CONTEXT_DIR=/workspace" >> "$GITHUB_ENV"
+                  CANDIDATE="$(find /workspace -maxdepth 4 -type f -name Dockerfile | head -n 1 || true)"
+                  if [ -n "${CANDIDATE}" ]; then
+                    echo "CONTEXT_DIR=$(dirname "${CANDIDATE}")" >> "$GITHUB_ENV"
                     exit 0
                   fi
                   echo "Could not find Dockerfile in known workspace paths."
                   ls -la /
                   ls -la /workspace || true
+                  find /workspace -maxdepth 5 -type d -print || true
                   exit 1
 
             - name: Compute image tags
