@@ -7,6 +7,59 @@ adapter contract, and operations documentation.
 
 ---
 
+## First 5 Minutes
+
+This quickstart verifies that the service is reachable and can process one validation request.
+
+### 1. Start the service
+
+Run your deployed container (or local instance) with the required environment variables configured.
+
+### 2. Check health
+
+```bash
+curl http://localhost:8080/admin/health
+```
+
+Expected response:
+
+```json
+{"status":"ok"}
+```
+
+### 3. Check loaded models
+
+```bash
+curl http://localhost:8080/models
+```
+
+Pick one `model` and `version` from the response.
+
+### 4. Validate a payload
+
+```bash
+curl -X POST "http://localhost:8080/models/<model>/versions/<version>:validate" \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "payload": {
+      "id": "example-001",
+      "name": "example record"
+    }
+  }'
+```
+
+Expected response shape:
+
+```json
+{
+  "passed": true,
+  "results": []
+}
+```
+
+If your auth mode is `none`, you can omit the `Authorization` header.
+
 <a href="https://ce-rise.eu/" target="_blank" rel="noopener noreferrer">
   <img src="images/CE-RISE_logo.png" alt="CE-RISE logo" width="200"/>
 </a>

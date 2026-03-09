@@ -120,7 +120,6 @@ The CI/CD pipeline produces the following immutable tags:
 | Tag Format | Example | Purpose |
 |------------|---------|---------|
 | `<version>` | `v1.2.0` | Semantic version from git tag |
-| `<git-sha>` | `a1b2c3d` | Short commit SHA (always unique) |
 | `latest` | `latest` | Most recent release on `main` |
 
 ### `latest` Tag Policy
@@ -140,11 +139,10 @@ After releasing version `v1.2.0` from `main` at commit `a1b2c3d`, the following 
 
 ```
 <registry>/<namespace>/hex-core-service:v1.2.0
-<registry>/<namespace>/hex-core-service:a1b2c3d
 <registry>/<namespace>/hex-core-service:latest
 ```
 
-**For production deployments:** Always use explicit version tags (`v1.2.0`) or commit SHAs, never `latest`.
+**For production deployments:** Always use explicit version tags (`v1.2.0`) and treat `latest` as convenience.
 
 ---
 
@@ -262,7 +260,6 @@ kubectl create secret docker-registry scaleway-registry \
 ### Image Retention
 
 - **Version tags** (`v1.2.0`): Retained indefinitely
-- **Commit SHA tags**: Retained for 90 days
 - **`latest` tag**: Always points to the most recent release
 
 ---
@@ -423,12 +420,10 @@ Releases are fully automated via CI/CD. To create a new release:
    - Runs full test suite (including integration tests)
    - Builds release binary (`cargo build --release`)
    - Builds `hex-cli` archives for Linux/macOS/Windows and uploads them as release-pipeline artifacts
-   - Optionally generates SDKs (TypeScript, Python, Go) from repo OpenAPI specs
-   - Builds Docker image
-   - Pushes image with version, SHA, and `latest` tags
-   - Mirrors tag to GitHub
+   - Builds and pushes Docker image with `vX.Y.Z` tag
+   - Promotes the same image to `latest`
    - Publishes `hex-cli` binaries as release artifacts (primary distribution channel)
-   - Optionally publishes generated SDKs to npm, PyPI, and a dedicated Go module repository
+   - Optionally forwards release tags to SDK repositories (Go/TypeScript/Python)
 
 ### CLI Binary Availability
 

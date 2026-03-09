@@ -8,66 +8,92 @@ Full technical documentation is published at the project Pages site.
 
 ---
 
-## What this repository contains
+## What This Project Provides
 
-- `crates/core` — domain types, port traits, and use-case implementations (no I/O, no HTTP)
-- `crates/registry` — catalog-backed artifact registry with URL artifact fetching
-- `crates/api` — REST inbound adapter (axum)
-- `crates/validator-jsonschema` / `crates/validator-shacl` — pluggable validators
-- `crates/io-memory` / `crates/io-http` — IO adapter implementations
-- `crates/cli` — command-line interface
-- `docs/` — source for the Pages documentation site
-- `.github/workflows/` — mirror and release automation for GitHub / Zenodo archival
-- `.forgejo/workflows/` — primary CI/CD on Codeberg (lint, test, build, release, pages)
+- Source code for the `hex-core-service` API, validators, and adapters.
+- Containerized service image for deployment.
+- OpenAPI-based SDK generation pipeline with dedicated SDK repositories for Go, TypeScript, and Python.
 
-## Status
+## Service Container
 
-Early development — architecture and port contracts are being established.
+### Pull Image
 
-## Quick start
-
-```sh
-cp .env.example .env
-# edit .env with your catalog source and adapter config
-cargo build --release
-cargo run -p api
+```bash
+docker pull rg.fr-par.scw.cloud/ce-rise-software/hex-core-service:<tag>
 ```
 
-## Running tests
+Use an explicit version tag (for example `v0.0.1`) for stable deployments.
 
-```sh
-# Unit and contract tests
-cargo test
+### Start Container
 
-# Full suite including integration tests
-cargo test --features integration-tests
+```bash
+docker run --rm -p 8080:8080 \
+  -e REGISTRY_MODE=catalog \
+  -e REGISTRY_CATALOG_URL="https://<catalog-host>/catalog.json" \
+  -e IO_ADAPTER_ID=memory \
+  -e AUTH_MODE=jwt_jwks \
+  -e AUTH_JWKS_URL="https://<idp>/realms/<realm>/protocol/openid-connect/certs" \
+  -e AUTH_ISSUER="https://<idp>/realms/<realm>" \
+  -e AUTH_AUDIENCE="hex-core-service" \
+  rg.fr-par.scw.cloud/ce-rise/hex-core-service:<tag>
 ```
 
-## Configuration
+### Required Runtime Parameters
 
-All runtime configuration is via environment variables. See `.env.example` for the full reference. Key variables:
+| Variable | Required | Description |
+|---|---|---|
+| `REGISTRY_MODE` | Yes | Registry backend (`catalog`) |
+| `REGISTRY_CATALOG_URL` | Yes (unless file/json alternatives are used) | URL of catalog JSON with model/version/base_url entries |
+| `IO_ADAPTER_ID` | Yes | IO adapter implementation (`memory` or configured HTTP adapter) |
+| `AUTH_MODE` | Yes | Authentication mode (`jwt_jwks`, `forward_auth`, `none`) |
+| `AUTH_JWKS_URL` | Yes for `jwt_jwks` | JWKS endpoint URL |
+| `AUTH_ISSUER` | Yes for `jwt_jwks` | Expected token issuer |
+| `AUTH_AUDIENCE` | Yes for `jwt_jwks` | Expected token audience |
+| `AUTH_ALLOW_INSECURE_NONE` | Yes for `none` | Must be `true` to allow non-auth mode |
 
-| Variable | Description |
-|----------|-------------|
-| `REGISTRY_CATALOG_URL` | URL to catalog JSON listing model/version/base_url entries |
-| `IO_ADAPTER_ID` | IO adapter to use (`memory`, `circularise`, etc.) |
-| `AUTH_JWKS_URL` | Keycloak JWKS endpoint for JWT validation |
-| `SERVER_PORT` | HTTP bind port (default `8080`) |
+## SDKs
 
-Model operation endpoints remain:
-- `POST /models/{model}/versions/{version}:validate`
-- `POST /models/{model}/versions/{version}:create`
-- `POST /models/{model}/versions/{version}:query`
+### SDK Source Repositories
 
-These are dispatched internally through a single unified operation route.
+- Go SDK: https://codeberg.org/CE-RISE-software/hex-core-sdk-go
+- TypeScript SDK: https://codeberg.org/CE-RISE-software/hex-core-sdk-typescript
+- Python SDK: https://codeberg.org/CE-RISE-software/hex-core-sdk-python
+
+### Import in Projects
+
+Go (current concrete usage):
+
+```go
+import hexsdk "codeberg.org/CE-RISE-software/hex-core-sdk-go"
+```
+
+```bash
+go get codeberg.org/CE-RISE-software/hex-core-sdk-go
+```
+
+TypeScript (npm placeholder, to be finalized when package publication is enabled):
+
+```ts
+import { Configuration } from "@ce-rise/hex-core-sdk";
+```
+
+```bash
+npm install @ce-rise/hex-core-sdk
+```
+
+Python (PyPI placeholder, to be finalized when package publication is enabled):
+
+```python
+from ce_rise_hex_core_sdk import ApiClient
+```
+
+```bash
+pip install ce-rise-hex-core-sdk
+```
 
 ## License
 
 Licensed under the [European Union Public Licence v1.2 (EUPL-1.2)](LICENSE).
-
-## Contributing
-
-This repository is maintained on [Codeberg](https://codeberg.org/CE-RISE-software/hex-core-service) — the canonical source of truth. The GitHub repository is a read mirror used for release archival and Zenodo integration. Issues and pull requests should be opened on Codeberg.
 
 ---
 

@@ -16,7 +16,7 @@ pub struct UrlArtifactRegistry {
 }
 
 /// Configurable filenames for each artifact type.
-/// Defaults match the values specified in AGENTS.md §7.2.
+/// Defaults are chosen for conservative URL parsing and validation.
 #[derive(Debug, Clone)]
 pub struct ArtifactFileMap {
     pub route: String,

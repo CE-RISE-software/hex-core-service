@@ -364,6 +364,18 @@ groups:
 
 ## Troubleshooting Guide
 
+### API Error Matrix
+
+| HTTP | Typical error body | Likely cause | User action |
+|---|---|---|---|
+| `401` | auth error response | Missing/invalid token, wrong auth mode config, expired token | Provide valid token, verify auth variables and mode |
+| `403` | auth error response | Caller authenticated but denied by policy/scope/role | Request required role/scope or adjust policy |
+| `404` | `MODEL_NOT_FOUND` | Model/version not in active registry index | Check catalog entry, trigger `/admin/registry/refresh`, retry |
+| `409` | `IDEMPOTENCY_CONFLICT` | Reused `Idempotency-Key` with different payload | Use a new idempotency key for changed payload |
+| `422` | `VALIDATION_FAILED` or `NOT_ROUTABLE` | Payload does not satisfy model artifacts or route constraints | Inspect violations, fix payload, retry |
+| `500` | `VALIDATOR_ERROR` or `INTERNAL_ERROR` | Server-side validator/runtime issue | Check logs and validator artifacts |
+| `502` | `STORE_ERROR` or `REGISTRY_ERROR` | Downstream IO adapter/registry fetch failure | Check downstream service/network health and retry |
+
 ### Service Won't Start
 
 **Symptoms:** Container exits immediately or crashes in a loop.

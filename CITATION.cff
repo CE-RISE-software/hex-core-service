@@ -1,0 +1,24 @@
+cff-version: 1.2.0
+title: CE-RISE Hex Core Service
+message: >-
+  If you use this software, please cite it using the metadata from this file.
+type: software
+version: 0.0.1
+authors:
+  - given-names: Riccardo
+    family-names: Boero
+    email: ribo@nilu.no
+    orcid: "https://orcid.org/0000-0002-7468-9096"
+    affiliation: NILU
+repository-code: "https://codeberg.org/CE-RISE-software/hex-core-service"
+url: "https://ce-rise-software.codeberg.page/hex-core-service/"
+abstract: >-
+  Rust-based hexagonal core service for model-agnostic validation and IO
+  orchestration of versioned digital-passport-like records.
+keywords:
+  - CE-RISE
+  - Hexagonal Architecture
+  - Digital Product Passport
+  - API
+  - Rust
+license: EUPL-1.2

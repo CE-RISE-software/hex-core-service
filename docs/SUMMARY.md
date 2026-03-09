@@ -7,6 +7,7 @@
 - [Architecture](architecture.md)
 - [API Reference](api-reference.md)
 - [Authentication](authentication.md)
+- [Model Onboarding](model-onboarding.md)
 
 # Validation and Contracts
 

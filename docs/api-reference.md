@@ -1,52 +1,44 @@
 # API Reference
 
----
-
 ## Base URL
 
-```
+```text
 https://<host>/
 ```
 
----
-
 ## Authentication
 
-All endpoints except `/admin/health` require authentication.
-Default mode is bearer JWT validation (`AUTH_MODE=jwt_jwks`), with optional forwarded-identity mode (`AUTH_MODE=forward_auth`) and isolated dry-run mode (`AUTH_MODE=none` with explicit unsafe flag).
-See [Authentication](authentication.md) for mode selection, header mapping, and deployment patterns.
+All endpoints except `GET /admin/health` require authentication.
 
-```
+```http
 Authorization: Bearer <access_token>
 ```
 
----
+Auth modes and integration patterns are described in [Authentication](authentication.md).
 
-## Model Operations
+## End-to-End Operation Examples
 
-### Validate a payload
+### Validate
 
-```
+```text
 POST /models/{model}/versions/{version}:validate
 ```
 
-See [SHACL Validation](shacl-validation.md) for SHACL-specific execution details, supported constraints, and result semantics.
+Example request:
 
-**Headers**
-
-| Header | Required | Description |
-|--------|----------|-------------|
-| `Authorization` | Yes | Bearer token |
-
-**Body**
-
-```json
-{
-  "payload": { ... }
-}
+```bash
+curl -X POST "https://<host>/models/re-indicators-specification/versions/0.0.3:validate" \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "payload": {
+      "id": "record-001",
+      "name": "example"
+    }
+  }'
 ```
 
-**Response `200`**
+Example response (`200`):
 
 ```json
 {
@@ -55,166 +47,157 @@ See [SHACL Validation](shacl-validation.md) for SHACL-specific execution details
 }
 ```
 
----
+### Create
 
-### Create a record
-
-```
+```text
 POST /models/{model}/versions/{version}:create
 ```
 
-**Headers**
+Example request:
 
-| Header | Required | Description |
-|--------|----------|-------------|
-| `Authorization` | Yes | Bearer token |
-| `Idempotency-Key` | Yes | Client-generated unique key |
+```bash
+curl -X POST "https://<host>/models/re-indicators-specification/versions/0.0.3:create" \
+  -H "Authorization: Bearer <token>" \
+  -H "Idempotency-Key: 7f8d4d5e-1fcb-4eab-a4bb-2af7ca0f7f12" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "payload": {
+      "id": "record-001",
+      "name": "example"
+    }
+  }'
+```
 
-**Body**
+Example response (`200`):
 
 ```json
 {
-  "payload": { ... }
+  "id": "record-001",
+  "model": "re-indicators-specification",
+  "version": "0.0.3",
+  "payload": {
+    "id": "record-001",
+    "name": "example"
+  }
 }
 ```
 
-**Response `200`**
+### Query
 
-```json
-{
-  "id": "record-abc123",
-  "model": "product-passport",
-  "version": "1.2.0",
-  "payload": { ... }
-}
-```
-
----
-
-### Query records
-
-```
+```text
 POST /models/{model}/versions/{version}:query
 ```
 
-**Headers**
+Example request:
 
-| Header | Required | Description |
-|--------|----------|-------------|
-| `Authorization` | Yes | Bearer token |
+```bash
+curl -X POST "https://<host>/models/re-indicators-specification/versions/0.0.3:query" \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "filter": {
+      "id": "record-001"
+    }
+  }'
+```
 
-**Body**
+Example response (`200`):
 
 ```json
 {
-  "filter": { ... }
+  "records": [
+    {
+      "id": "record-001",
+      "model": "re-indicators-specification",
+      "version": "0.0.3",
+      "payload": {
+        "id": "record-001",
+        "name": "example"
+      }
+    }
+  ]
 }
 ```
-
-**Response `200`**
-
-```json
-{
-  "records": [ ... ]
-}
-```
-
----
 
 ## Public Introspection
 
 ### List available models
 
-```
+```text
 GET /models
 ```
 
-**Response `200`**
+Example response (`200`):
 
 ```json
 {
   "models": [
-    { "id": "product-passport", "version": "1.2.0" }
+    {
+      "id": "re-indicators-specification",
+      "version": "0.0.3"
+    }
   ]
 }
 ```
 
----
+### Get model artifacts
 
-### Get artifact
-
-```
+```text
 GET /models/{model}/versions/{version}/schema
 GET /models/{model}/versions/{version}/shacl
 GET /models/{model}/versions/{version}/owl
 GET /models/{model}/versions/{version}/route
 ```
 
-Returns the raw artifact text. `404` if the artifact is not present for that model version.
-
----
+Returns raw artifact content when available.
 
 ### OpenAPI document
 
-```
+```text
 GET /openapi.json
 ```
 
----
-
 ## Admin Endpoints
 
-All `/admin/*` endpoints require token validation and/or network-level access controls.
-
 | Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/admin/health` | Liveness probe — always `200` if the process is up |
-| `GET` | `/admin/ready` | Readiness probe — `200` when registry index is loaded |
-| `GET` | `/admin/status` | Runtime status: models indexed, uptime |
-| `GET` | `/admin/metrics` | Prometheus metrics (requires `METRICS_ENABLED=true`) |
-| `POST` | `/admin/registry/refresh` | Re-discover artifacts and atomically reload index |
-| `GET` | `/admin/config` | Redacted configuration dump (optional) |
-| `POST` | `/admin/cache/clear` | Clear artifact cache only (optional) |
+|---|---|---|
+| `GET` | `/admin/health` | Liveness probe |
+| `GET` | `/admin/ready` | Readiness probe |
+| `GET` | `/admin/status` | Runtime status |
+| `GET` | `/admin/metrics` | Prometheus metrics (`METRICS_ENABLED=true`) |
+| `POST` | `/admin/registry/refresh` | Reload registry catalog/artifacts |
 
-### Refresh response
+Refresh response shape:
 
 ```json
 {
   "refreshed_at": "2026-03-03T18:12:45Z",
   "models_found": 3,
-  "errors": [
-    "model-a@1.0.0: artifact fetch failed for ... (https://...)"
-  ]
+  "errors": []
 }
 ```
 
-Notes:
-
-- `models_found` is the number of successfully indexed model/version entries after refresh.
-- `errors` contains per-entry resolution errors that did not prevent other entries from loading.
-- `refreshed_at` is an RFC3339 UTC timestamp.
-
----
-
 ## Error Format
 
-All errors return a JSON body:
+All errors use a JSON envelope:
 
 ```json
 {
   "code": "MODEL_NOT_FOUND",
-  "message": "Model product-passport v1.2.0 not found in registry",
+  "message": "Model re-indicators-specification v0.0.3 not found in registry",
   "details": null
 }
 ```
 
-| Code | HTTP Status |
-|------|-------------|
-| `MODEL_NOT_FOUND` | 404 |
-| `NOT_ROUTABLE` | 422 |
-| `VALIDATION_FAILED` | 422 |
-| `IDEMPOTENCY_CONFLICT` | 409 |
-| `STORE_ERROR` | 502 |
-| `REGISTRY_ERROR` | 502 |
-| `VALIDATOR_ERROR` | 500 |
-| `INTERNAL_ERROR` | 500 |
+Common mappings:
+
+| Code | HTTP |
+|---|---|
+| `MODEL_NOT_FOUND` | `404` |
+| `VALIDATION_FAILED` | `422` |
+| `NOT_ROUTABLE` | `422` |
+| `IDEMPOTENCY_CONFLICT` | `409` |
+| `STORE_ERROR` | `502` |
+| `REGISTRY_ERROR` | `502` |
+| `VALIDATOR_ERROR` | `500` |
+| `INTERNAL_ERROR` | `500` |

@@ -91,4 +91,4 @@ Validation responses merge all validator outputs:
 
 - Not a full RDF/SHACL graph validation engine yet.
 - Focused on currently supported SHACL profile checks.
-- OWL validation is tracked separately (Phase 6b).
+- OWL validation is documented separately in the OWL validator sections.
