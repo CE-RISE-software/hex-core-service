@@ -240,8 +240,30 @@ jobs:
                   );
                   EOF
 
+                  # Ensure generated TypeScript SDK can execute tests in CI.
+                  cat > dist/sdks/typescript/jest.config.cjs <<'EOF'
+                  module.exports = {
+                    preset: "ts-jest",
+                    testEnvironment: "node",
+                    roots: ["<rootDir>/test"],
+                    testMatch: ["**/*.test.ts"],
+                  };
+                  EOF
+                  node <<'EOF'
+                  const fs = require("fs");
+                  const pkgPath = "dist/sdks/typescript/package.json";
+                  const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
+                  pkg.scripts = pkg.scripts || {};
+                  pkg.scripts.test = "jest --runInBand";
+                  pkg.devDependencies = pkg.devDependencies || {};
+                  if (!pkg.devDependencies.jest) pkg.devDependencies.jest = "^29.7.0";
+                  if (!pkg.devDependencies["ts-jest"]) pkg.devDependencies["ts-jest"] = "^29.2.5";
+                  if (!pkg.devDependencies["@types/jest"]) pkg.devDependencies["@types/jest"] = "^29.5.14";
+                  fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
+                  EOF
+
                   (cd dist/sdks/typescript && npm install)
-                  (cd dist/sdks/typescript && npm test -- --runInBand)
+                  (cd dist/sdks/typescript && npm test)
 
                   npx -y @openapitools/openapi-generator-cli@2.15.3 generate \
                     -g python \
