@@ -48,6 +48,56 @@ jobs:
                     --additional-properties=npmName=@ce-rise/hex-core-sdk,npmVersion="${TS_VERSION}",withSeparateModelsAndApi=true,apiPackage=apis,modelPackage=models \
                     --global-property=apiDocs=true,modelDocs=true,apiTests=true,modelTests=true,supportingFiles=true
 
+                  # Deterministic docs/tests generated directly from OpenAPI operations.
+                  node <<'EOF'
+                  const fs = require("fs");
+                  const spec = JSON.parse(fs.readFileSync("crates/api/src/openapi.json", "utf8"));
+                  const paths = spec.paths || {};
+                  const methods = ["get", "post", "put", "patch", "delete"];
+                  const ops = [];
+                  for (const [path, item] of Object.entries(paths)) {
+                    for (const m of methods) {
+                      const op = item[m];
+                      if (!op) continue;
+                      const operationId = op.operationId || `${m}_${path.replace(/[^a-zA-Z0-9]+/g, "_")}`;
+                      ops.push({
+                        method: m.toUpperCase(),
+                        path,
+                        operationId,
+                        summary: op.summary || "",
+                        description: op.description || ""
+                      });
+                    }
+                  }
+                  fs.mkdirSync("dist/sdks/typescript/docs", { recursive: true });
+                  fs.mkdirSync("dist/sdks/typescript/test", { recursive: true });
+
+                  const docs = [
+                    "# TypeScript SDK Operations",
+                    "",
+                    "Generated from `crates/api/src/openapi.json`.",
+                    "",
+                    ...ops.map((o) =>
+                      `## ${o.operationId}\n\n- Method: \`${o.method}\`\n- Path: \`${o.path}\`\n- Summary: ${o.summary || "_none_"}\n- Description: ${o.description || "_none_"}\n`
+                    )
+                  ].join("\n");
+                  fs.writeFileSync("dist/sdks/typescript/docs/operations.md", docs, "utf8");
+
+                  const test = [
+                    "const operations = [",
+                    ...ops.map((o) => `  { operationId: \"${o.operationId}\", method: \"${o.method}\", path: \"${o.path}\" },`),
+                    "];",
+                    "",
+                    "describe(\"Generated OpenAPI operations\", () => {",
+                    "  it(\"has at least one operation\", () => {",
+                    "    expect(operations.length).toBeGreaterThan(0);",
+                    "  });",
+                    "});",
+                    ""
+                  ].join("\n");
+                  fs.writeFileSync("dist/sdks/typescript/test/openapi-operations.test.ts", test, "utf8");
+                  EOF
+
                   npx -y @openapitools/openapi-generator-cli@2.15.3 generate \
                     -g python \
                     -i "crates/api/src/openapi.json" \
@@ -136,11 +186,11 @@ jobs:
                   git checkout "${BRANCH}" || git checkout -b "${BRANCH}"
 
                   mkdir -p "${TARGET_DIR}"
-                  for d in api apis model models test tests docs; do
+                  for d in src test tests docs; do
                     rm -rf "${TARGET_DIR}/${d}"
                   done
                   rm -f "${TARGET_DIR}"/*.ts
-                  for d in api apis model models test tests docs; do
+                  for d in src test tests docs; do
                     if [ -d "${SRC_DIR}/${d}" ]; then
                       cp -R "${SRC_DIR}/${d}" "${TARGET_DIR}/"
                     fi
@@ -156,7 +206,7 @@ jobs:
                   git config user.email "ce-rise-bot@users.noreply.codeberg.org"
                   if [ "${TARGET_DIR}" = "." ]; then
                     shopt -s nullglob
-                    for p in api apis model models test tests docs *.ts; do
+                    for p in src test tests docs *.ts; do
                       if [ -e "$p" ]; then
                         git add -A "$p"
                       fi
