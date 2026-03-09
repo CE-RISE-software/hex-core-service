@@ -136,11 +136,11 @@ jobs:
                   git checkout "${BRANCH}" || git checkout -b "${BRANCH}"
 
                   mkdir -p "${TARGET_DIR}"
-                  for d in src apis models test docs; do
+                  for d in apis models test docs; do
                     rm -rf "${TARGET_DIR}/${d}"
                   done
                   rm -f "${TARGET_DIR}"/*.ts
-                  for d in src apis models test docs; do
+                  for d in apis models test docs; do
                     if [ -d "${SRC_DIR}/${d}" ]; then
                       cp -R "${SRC_DIR}/${d}" "${TARGET_DIR}/"
                     fi
@@ -156,7 +156,7 @@ jobs:
                   git config user.email "ce-rise-bot@users.noreply.codeberg.org"
                   if [ "${TARGET_DIR}" = "." ]; then
                     shopt -s nullglob
-                    for p in src apis models test docs *.ts; do
+                    for p in apis models test docs *.ts; do
                       if [ -e "$p" ]; then
                         git add -A "$p"
                       fi
