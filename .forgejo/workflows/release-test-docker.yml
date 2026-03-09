@@ -9,10 +9,21 @@ jobs:
         container:
             image: gcr.io/kaniko-project/executor:debug
         steps:
-            - name: Checkout main
-              uses: actions/checkout@v4
-              with:
-                  ref: main
+            - name: Prepare build context
+              env:
+                  CI_PUSH_TOKEN: ${{ secrets.CI_PUSH_TOKEN }}
+              run: |
+                  set -euo pipefail
+                  SRC_DIR="/tmp/src"
+                  HOST="${GITHUB_SERVER_URL#https://}"
+                  rm -rf "${SRC_DIR}"
+                  if [ -n "${CI_PUSH_TOKEN:-}" ]; then
+                    git clone "https://${GITHUB_ACTOR}:${CI_PUSH_TOKEN}@${HOST}/${GITHUB_REPOSITORY}.git" "${SRC_DIR}"
+                  else
+                    git clone "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git" "${SRC_DIR}"
+                  fi
+                  cd "${SRC_DIR}"
+                  git checkout "${GITHUB_SHA}"
 
             - name: Compute image tags
               id: meta
@@ -39,8 +50,8 @@ jobs:
                   {"auths":{"${REGISTRY_HOST}":{"auth":"${AUTH}"}}}
                   EOF
                   /kaniko/executor \
-                    --context "${GITHUB_WORKSPACE}" \
-                    --dockerfile "${GITHUB_WORKSPACE}/Dockerfile" \
+                    --context "/tmp/src" \
+                    --dockerfile "/tmp/src/Dockerfile" \
                     --destination "${IMAGE_BASE}:${SHORT_SHA}" \
                     --destination "${IMAGE_BASE}:${TEST_TAG}"
 
