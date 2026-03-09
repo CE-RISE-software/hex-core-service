@@ -191,8 +191,7 @@ jobs:
                   /kaniko/executor \
                     --context "${CONTEXT_DIR}" \
                     --dockerfile "${CONTEXT_DIR}/Dockerfile" \
-                    --destination "${IMAGE_BASE}:${VERSION}" \
-                    --destination "${IMAGE_BASE}:${GITHUB_SHA}"
+                    --destination "${IMAGE_BASE}:${VERSION}"
 
     docker-tag-latest:
         runs-on: codeberg-medium
