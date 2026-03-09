@@ -42,60 +42,81 @@ jobs:
                     --additional-properties=packageName=hexcoresdk,enumClassPrefix=true,packageVersion="${GO_VERSION}"
 
                   npx -y @openapitools/openapi-generator-cli@2.15.3 generate \
-                    -g typescript-axios \
+                    -g typescript-fetch \
                     -i "crates/api/src/openapi.json" \
                     -o "dist/sdks/typescript" \
-                    --additional-properties=npmName=@ce-rise/hex-core-sdk,npmVersion="${TS_VERSION}",withSeparateModelsAndApi=true,apiPackage=apis,modelPackage=models \
-                    --global-property=apiDocs=true,modelDocs=true,apiTests=true,modelTests=true,supportingFiles=true
+                    --additional-properties=npmName=@ce-rise/hex-core-sdk,npmVersion="${TS_VERSION}",supportsES6=true,typescriptThreePlus=true
 
-                  # Deterministic docs/tests generated directly from OpenAPI operations.
+                  # Generate docs/tests from the generated TypeScript SDK code layout.
                   node <<'EOF'
                   const fs = require("fs");
-                  const spec = JSON.parse(fs.readFileSync("crates/api/src/openapi.json", "utf8"));
-                  const paths = spec.paths || {};
-                  const methods = ["get", "post", "put", "patch", "delete"];
-                  const ops = [];
-                  for (const [path, item] of Object.entries(paths)) {
-                    for (const m of methods) {
-                      const op = item[m];
-                      if (!op) continue;
-                      const operationId = op.operationId || `${m}_${path.replace(/[^a-zA-Z0-9]+/g, "_")}`;
-                      ops.push({
-                        method: m.toUpperCase(),
-                        path,
-                        operationId,
-                        summary: op.summary || "",
-                        description: op.description || ""
-                      });
-                    }
-                  }
-                  fs.mkdirSync("dist/sdks/typescript/docs", { recursive: true });
-                  fs.mkdirSync("dist/sdks/typescript/test", { recursive: true });
+                  const path = require("path");
 
-                  const docs = [
-                    "# TypeScript SDK Operations",
+                  const sdkRoot = path.join("dist", "sdks", "typescript");
+                  const srcApis = path.join(sdkRoot, "src", "apis");
+                  const srcModels = path.join(sdkRoot, "src", "models");
+                  const docsRoot = path.join(sdkRoot, "docs");
+                  const testRoot = path.join(sdkRoot, "test");
+                  const docsApis = path.join(docsRoot, "apis");
+                  const docsModels = path.join(docsRoot, "models");
+                  const testApis = path.join(testRoot, "apis");
+                  const testModels = path.join(testRoot, "models");
+
+                  const listTs = (dir) =>
+                    fs.existsSync(dir)
+                      ? fs.readdirSync(dir)
+                          .filter((f) => f.endsWith(".ts") && !f.toLowerCase().includes("index"))
+                          .map((f) => path.basename(f, ".ts"))
+                          .sort()
+                      : [];
+
+                  const apis = listTs(srcApis);
+                  const models = listTs(srcModels);
+
+                  fs.mkdirSync(docsApis, { recursive: true });
+                  fs.mkdirSync(docsModels, { recursive: true });
+                  fs.mkdirSync(testApis, { recursive: true });
+                  fs.mkdirSync(testModels, { recursive: true });
+
+                  const indexDoc = [
+                    "# TypeScript SDK",
                     "",
                     "Generated from `crates/api/src/openapi.json`.",
                     "",
-                    ...ops.map((o) =>
-                      `## ${o.operationId}\n\n- Method: \`${o.method}\`\n- Path: \`${o.path}\`\n- Summary: ${o.summary || "_none_"}\n- Description: ${o.description || "_none_"}\n`
-                    )
-                  ].join("\n");
-                  fs.writeFileSync("dist/sdks/typescript/docs/operations.md", docs, "utf8");
-
-                  const test = [
-                    "const operations = [",
-                    ...ops.map((o) => `  { operationId: \"${o.operationId}\", method: \"${o.method}\", path: \"${o.path}\" },`),
-                    "];",
+                    "## API Modules",
+                    ...apis.map((n) => `- [${n}](apis/${n}.md)`),
                     "",
-                    "describe(\"Generated OpenAPI operations\", () => {",
-                    "  it(\"has at least one operation\", () => {",
-                    "    expect(operations.length).toBeGreaterThan(0);",
-                    "  });",
-                    "});",
+                    "## Model Modules",
+                    ...models.map((n) => `- [${n}](models/${n}.md)`),
                     ""
                   ].join("\n");
-                  fs.writeFileSync("dist/sdks/typescript/test/openapi-operations.test.ts", test, "utf8");
+                  fs.writeFileSync(path.join(docsRoot, "README.md"), indexDoc, "utf8");
+
+                  for (const name of apis) {
+                    fs.writeFileSync(
+                      path.join(docsApis, `${name}.md`),
+                      `# API: ${name}\n\nAuto-generated API module from OpenAPI.\n`,
+                      "utf8"
+                    );
+                    fs.writeFileSync(
+                      path.join(testApis, `${name}.test.ts`),
+                      `import * as Apis from "../../src/apis";\n\ndescribe("api export: ${name}", () => {\n  it("is exported", () => {\n    expect((Apis as Record<string, unknown>)["${name}"]).toBeDefined();\n  });\n});\n`,
+                      "utf8"
+                    );
+                  }
+
+                  for (const name of models) {
+                    fs.writeFileSync(
+                      path.join(docsModels, `${name}.md`),
+                      `# Model: ${name}\n\nAuto-generated model module from OpenAPI.\n`,
+                      "utf8"
+                    );
+                    fs.writeFileSync(
+                      path.join(testModels, `${name}.test.ts`),
+                      `import * as Models from "../../src/models";\n\ndescribe("model export: ${name}", () => {\n  it("is exported", () => {\n    expect((Models as Record<string, unknown>)["${name}"]).toBeDefined();\n  });\n});\n`,
+                      "utf8"
+                    );
+                  }
                   EOF
 
                   npx -y @openapitools/openapi-generator-cli@2.15.3 generate \
@@ -189,24 +210,16 @@ jobs:
                   for d in src test tests docs; do
                     rm -rf "${TARGET_DIR}/${d}"
                   done
-                  rm -f "${TARGET_DIR}"/*.ts
                   for d in src test tests docs; do
                     if [ -d "${SRC_DIR}/${d}" ]; then
                       cp -R "${SRC_DIR}/${d}" "${TARGET_DIR}/"
-                    fi
-                  done
-                  shopt -s nullglob
-                  for f in "${SRC_DIR}"/*.ts; do
-                    if [ -e "${f}" ]; then
-                      cp "${f}" "${TARGET_DIR}/"
                     fi
                   done
 
                   git config user.name "ce-rise-bot"
                   git config user.email "ce-rise-bot@users.noreply.codeberg.org"
                   if [ "${TARGET_DIR}" = "." ]; then
-                    shopt -s nullglob
-                    for p in src test tests docs *.ts; do
+                    for p in src test tests docs; do
                       if [ -e "$p" ]; then
                         git add -A "$p"
                       fi
