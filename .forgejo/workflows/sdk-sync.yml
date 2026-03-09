@@ -30,6 +30,11 @@ jobs:
               with:
                   go-version: "1.22"
 
+            - name: Setup Python
+              uses: https://github.com/actions/setup-python@v5
+              with:
+                  python-version: "3.11"
+
             - name: Generate Go, TypeScript, and Python SDKs
               run: |
                   set -euo pipefail
@@ -192,6 +197,61 @@ jobs:
                     -o "dist/sdks/python" \
                     --additional-properties=packageName=ce_rise_hex_core_sdk,projectName=ce-rise-hex-core-sdk,packageVersion="${PY_VERSION}"
 
+                  # Replace generator placeholder tests (pass-only stubs) with executable smoke tests.
+                  rm -f dist/sdks/python/test/test_*_api.py dist/sdks/python/test/test_*.py || true
+                  mkdir -p dist/sdks/python/test
+                  cat > dist/sdks/python/test/test_smoke_client.py <<'EOF'
+                  import unittest
+
+                  from ce_rise_hex_core_sdk import ApiClient, Configuration
+                  from ce_rise_hex_core_sdk.api.admin_api import AdminApi
+                  from ce_rise_hex_core_sdk.api.discovery_api import DiscoveryApi
+                  from ce_rise_hex_core_sdk.api.models_api import ModelsApi
+
+
+                  class TestSmokeClient(unittest.TestCase):
+                      def test_api_surfaces_exist(self):
+                          cfg = Configuration(host="http://localhost:8080")
+                          client = ApiClient(cfg)
+
+                          self.assertIsNotNone(AdminApi(client))
+                          self.assertIsNotNone(DiscoveryApi(client))
+                          self.assertIsNotNone(ModelsApi(client))
+
+                      def test_default_configuration_has_host(self):
+                          cfg = Configuration()
+                          self.assertTrue(isinstance(cfg.host, str))
+                          self.assertNotEqual(cfg.host, "")
+
+
+                  if __name__ == "__main__":
+                      unittest.main()
+                  EOF
+
+                  # Ensure package version is consistent across generated metadata files.
+                  python - <<'EOF'
+                  import re
+                  from pathlib import Path
+
+                  root = Path("dist/sdks/python")
+                  init_py = (root / "ce_rise_hex_core_sdk" / "__init__.py").read_text()
+                  pyproject = (root / "pyproject.toml").read_text()
+                  setup_py = (root / "setup.py").read_text()
+
+                  v_init = re.search(r'__version__\\s*=\\s*"([^"]+)"', init_py).group(1)
+                  v_pyproject = re.search(r'^version\\s*=\\s*"([^"]+)"', pyproject, re.M).group(1)
+                  v_setup = re.search(r'version\\s*=\\s*"([^"]+)"', setup_py).group(1)
+
+                  if not (v_init == v_pyproject == v_setup):
+                      raise SystemExit(
+                          f"Python SDK version mismatch: __init__={v_init}, pyproject={v_pyproject}, setup.py={v_setup}"
+                      )
+                  print(f"Python SDK version synchronized: {v_init}")
+                  EOF
+
+                  # Basic package quality gate for generated Python SDK.
+                  (cd dist/sdks/python && python -m unittest discover -s test -v)
+
             - name: Publish Go SDK to external repo
               env:
                   GO_SDK_REPO: ${{ vars.GO_SDK_REPO }}
@@ -333,11 +393,16 @@ jobs:
                       cp -R "${SRC_DIR}/${d}" "${TARGET_DIR}/"
                     fi
                   done
+                  for f in pyproject.toml setup.py setup.cfg requirements.txt; do
+                    if [ -f "${SRC_DIR}/${f}" ]; then
+                      cp "${SRC_DIR}/${f}" "${TARGET_DIR}/"
+                    fi
+                  done
 
                   git config user.name "ce-rise-bot"
                   git config user.email "ce-rise-bot@users.noreply.codeberg.org"
                   if [ "${TARGET_DIR}" = "." ]; then
-                    for p in ce_rise_hex_core_sdk test docs; do
+                    for p in ce_rise_hex_core_sdk test docs pyproject.toml setup.py setup.cfg requirements.txt; do
                       if [ -e "$p" ]; then
                         git add -A "$p"
                       fi
