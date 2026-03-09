@@ -46,7 +46,7 @@ jobs:
                     -i "crates/api/src/openapi.json" \
                     -o "dist/sdks/typescript" \
                     --additional-properties=npmName=@ce-rise/hex-core-sdk,npmVersion="${TS_VERSION}",withSeparateModelsAndApi=true,apiPackage=apis,modelPackage=models \
-                    --global-property=apis,models,supportingFiles,apiDocs=true,modelDocs=true,apiTests=true,modelTests=true
+                    --global-property=apiDocs=true,modelDocs=true,apiTests=true,modelTests=true,supportingFiles=true
 
                   npx -y @openapitools/openapi-generator-cli@2.15.3 generate \
                     -g python \
@@ -136,11 +136,11 @@ jobs:
                   git checkout "${BRANCH}" || git checkout -b "${BRANCH}"
 
                   mkdir -p "${TARGET_DIR}"
-                  for d in apis models test docs; do
+                  for d in api apis model models test tests docs; do
                     rm -rf "${TARGET_DIR}/${d}"
                   done
                   rm -f "${TARGET_DIR}"/*.ts
-                  for d in apis models test docs; do
+                  for d in api apis model models test tests docs; do
                     if [ -d "${SRC_DIR}/${d}" ]; then
                       cp -R "${SRC_DIR}/${d}" "${TARGET_DIR}/"
                     fi
@@ -156,7 +156,7 @@ jobs:
                   git config user.email "ce-rise-bot@users.noreply.codeberg.org"
                   if [ "${TARGET_DIR}" = "." ]; then
                     shopt -s nullglob
-                    for p in apis models test docs *.ts; do
+                    for p in api apis model models test tests docs *.ts; do
                       if [ -e "$p" ]; then
                         git add -A "$p"
                       fi
