@@ -136,7 +136,7 @@ jobs:
               run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
     docker-build-and-push:
-        runs-on: codeberg-small
+        runs-on: codeberg-medium
         needs:
             - release
         container:
@@ -195,7 +195,7 @@ jobs:
                     --destination "${IMAGE_BASE}:${GITHUB_SHA}"
 
     docker-tag-latest:
-        runs-on: codeberg-small
+        runs-on: codeberg-medium
         needs:
             - docker-build-and-push
         container:

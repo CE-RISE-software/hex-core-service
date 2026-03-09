@@ -5,7 +5,7 @@ on:
 
 jobs:
     docker-build-and-push-test:
-        runs-on: codeberg-small
+        runs-on: codeberg-medium
         container:
             image: gcr.io/kaniko-project/executor:debug
         steps:
@@ -67,7 +67,7 @@ jobs:
                     --destination "${IMAGE_BASE}:${TEST_TAG}"
 
     docker-tag-test-latest:
-        runs-on: codeberg-small
+        runs-on: codeberg-medium
         needs:
             - docker-build-and-push-test
         container:
