@@ -198,7 +198,7 @@ jobs:
                     );
                     fs.writeFileSync(
                       path.join(testApis, `${name}.test.ts`),
-                      `declare const describe: (name: string, fn: () => void) => void;\ndeclare const it: (name: string, fn: () => void) => void;\ndeclare const expect: (value: unknown) => { toBeDefined: () => void };\nimport * as Apis from "../../src/apis";\n\ndescribe("api export: ${name}", () => {\n  it("is exported", () => {\n    expect((Apis as Record<string, unknown>)["${name}"]).toBeDefined();\n  });\n});\n`,
+                      `import * as Apis from "../../src/apis";\n\ndescribe("api export: ${name}", () => {\n  it("is exported", () => {\n    expect((Apis as Record<string, unknown>)["${name}"]).toBeDefined();\n  });\n});\n`,
                       "utf8"
                     );
                   }
@@ -213,19 +213,19 @@ jobs:
                     if (meta.kind === "enum") {
                       fs.writeFileSync(
                         path.join(testModels, `${name}.test.ts`),
-                        `declare const describe: (name: string, fn: () => void) => void;\ndeclare const it: (name: string, fn: () => void) => void;\ndeclare const expect: (value: unknown) => { toBeDefined: () => void };\nimport * as Models from "../../src/models";\n\ndescribe("enum export: ${name}", () => {\n  it("exports enum object at runtime", () => {\n    expect((Models as Record<string, unknown>)["${name}"]).toBeDefined();\n  });\n});\n`,
+                        `import * as Models from "../../src/models";\n\ndescribe("enum export: ${name}", () => {\n  it("exports enum object at runtime", () => {\n    expect((Models as Record<string, unknown>)["${name}"]).toBeDefined();\n  });\n});\n`,
                         "utf8"
                       );
                     } else if (meta.kind === "object") {
                       fs.writeFileSync(
                         path.join(testModels, `${name}.test.ts`),
-                        `declare const describe: (name: string, fn: () => void) => void;\ndeclare const it: (name: string, fn: () => void) => void;\ndeclare const expect: (value: unknown) => { toBeDefined: () => void };\nimport * as Models from "../../src/models";\n\ndescribe("model helpers: ${name}", () => {\n  it("exports runtime helper functions", () => {\n    expect((Models as Record<string, unknown>)["instanceOf${name}"]).toBeDefined();\n    expect((Models as Record<string, unknown>)["${name}FromJSON"]).toBeDefined();\n    expect((Models as Record<string, unknown>)["${name}ToJSON"]).toBeDefined();\n  });\n});\n`,
+                        `import * as Models from "../../src/models";\n\ndescribe("model helpers: ${name}", () => {\n  it("exports runtime helper functions", () => {\n    expect((Models as Record<string, unknown>)["instanceOf${name}"]).toBeDefined();\n    expect((Models as Record<string, unknown>)["${name}FromJSON"]).toBeDefined();\n    expect((Models as Record<string, unknown>)["${name}ToJSON"]).toBeDefined();\n  });\n});\n`,
                         "utf8"
                       );
                     } else {
                       fs.writeFileSync(
                         path.join(testModels, `${name}.test.ts`),
-                        `declare const describe: (name: string, fn: () => void) => void;\ndeclare const it: (name: string, fn: () => void) => void;\ndeclare const expect: (value: unknown) => { toBe: (other: unknown) => void };\n\ndescribe("model shape: ${name}", () => {\n  it("is categorized as unknown runtime shape", () => {\n    expect(true).toBe(true);\n  });\n});\n`,
+                        `describe("model shape: ${name}", () => {\n  it("is categorized as unknown runtime shape", () => {\n    expect(true).toBe(true);\n  });\n});\n`,
                         "utf8"
                       );
                     }
@@ -235,7 +235,7 @@ jobs:
                   const enumModels = modelMeta.filter((m) => m.kind === "enum").map((m) => m.name);
                   fs.writeFileSync(
                     path.join(testRoot, "model-kinds.acceptance.test.ts"),
-                    `declare const describe: (name: string, fn: () => void) => void;\ndeclare const it: (name: string, fn: () => void) => void;\ndeclare const expect: (value: unknown) => { toBeGreaterThan: (n: number) => void };\n\ndescribe("typescript-fetch model coverage", () => {\n  it("has at least one object model", () => {\n    expect(${JSON.stringify(objectModels)}.length).toBeGreaterThan(0);\n  });\n  it("has at least one enum model", () => {\n    expect(${JSON.stringify(enumModels)}.length).toBeGreaterThan(0);\n  });\n});\n`,
+                    `describe("typescript-fetch model coverage", () => {\n  it("has at least one object model", () => {\n    expect(${JSON.stringify(objectModels)}.length).toBeGreaterThan(0);\n  });\n  it("has at least one enum model", () => {\n    expect(${JSON.stringify(enumModels)}.length).toBeGreaterThan(0);\n  });\n});\n`,
                     "utf8"
                   );
                   EOF
