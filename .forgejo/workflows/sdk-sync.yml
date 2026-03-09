@@ -39,7 +39,7 @@ jobs:
                     -g go \
                     -i "crates/api/src/openapi.json" \
                     -o "dist/sdks/go" \
-                    --additional-properties=packageName=hexcoresdk,enumClassPrefix=true,packageVersion="${GO_VERSION}"
+                    --additional-properties=packageName=hexcoresdk,enumClassPrefix=true,packageVersion="${GO_VERSION}",gitUserId=CE-RISE-software,gitRepoId=hex-core-sdk-go
 
                   npx -y @openapitools/openapi-generator-cli@2.15.3 generate \
                     -g typescript-fetch \
