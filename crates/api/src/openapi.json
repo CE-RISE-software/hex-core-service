@@ -5,6 +5,12 @@
         "version": "0.0.1",
         "description": "Public and admin API for validating, creating, and querying records against versioned CE-RISE model artifacts."
     },
+    "servers": [
+        {
+            "url": "http://localhost:8080",
+            "description": "Local default server"
+        }
+    ],
     "tags": [
         {
             "name": "Models",
