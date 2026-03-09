@@ -136,29 +136,38 @@ jobs:
               run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
     docker-build-and-push:
-        runs-on: codeberg-medium
+        runs-on: codeberg-small
         needs:
             - release
         container:
             image: gcr.io/kaniko-project/executor:debug
         steps:
-            - name: Resolve build context path
+            - name: Prepare build context
               run: |
                   set -euo pipefail
                   if [ -n "${GITHUB_WORKSPACE:-}" ] && [ -f "${GITHUB_WORKSPACE}/Dockerfile" ]; then
                     echo "CONTEXT_DIR=${GITHUB_WORKSPACE}" >> "$GITHUB_ENV"
                     exit 0
                   fi
-                  CANDIDATE="$(find /workspace -maxdepth 4 -type f -name Dockerfile | head -n 1 || true)"
+                  CANDIDATE="$(find /workspace -maxdepth 6 -type f -name Dockerfile | head -n 1 || true)"
                   if [ -n "${CANDIDATE}" ]; then
                     echo "CONTEXT_DIR=$(dirname "${CANDIDATE}")" >> "$GITHUB_ENV"
                     exit 0
                   fi
-                  echo "Could not find Dockerfile in known workspace paths."
-                  ls -la /
-                  ls -la /workspace || true
-                  find /workspace -maxdepth 5 -type d -print || true
-                  exit 1
+                  echo "Dockerfile not found in mounted workspace, downloading archive for ${GITHUB_SHA}"
+                  ARCHIVE_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/archive/${GITHUB_SHA}.tar.gz"
+                  mkdir -p /tmp/context
+                  wget -qO /tmp/repo.tar.gz "${ARCHIVE_URL}"
+                  tar -xzf /tmp/repo.tar.gz -C /tmp/context --strip-components=1
+                  if [ ! -f /tmp/context/Dockerfile ]; then
+                    echo "Could not find Dockerfile after archive download."
+                    ls -la /
+                    ls -la /workspace || true
+                    find /workspace -maxdepth 6 -type d -print || true
+                    ls -la /tmp/context || true
+                    exit 1
+                  fi
+                  echo "CONTEXT_DIR=/tmp/context" >> "$GITHUB_ENV"
 
             - name: Extract version tag
               id: tag
