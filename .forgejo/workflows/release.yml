@@ -7,7 +7,7 @@ on:
 
 jobs:
     cli-binaries:
-        runs-on: codeberg-tiny
+        runs-on: codeberg-medium
         strategy:
             fail-fast: false
             matrix:
@@ -93,7 +93,7 @@ jobs:
                       dist/*.tar.gz
 
     release:
-        runs-on: codeberg-tiny
+        runs-on: codeberg-medium
         needs:
             - cli-binaries
 
@@ -153,17 +153,22 @@ jobs:
                   REGISTRY_NAMESPACE: ${{ vars.REGISTRY_NAMESPACE }}
                   REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
                   REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+                  CI_PUSH_TOKEN: ${{ secrets.CI_PUSH_TOKEN }}
               run: |
                   set -euo pipefail
                   IMAGE_BASE="${REGISTRY_HOST}/${REGISTRY_NAMESPACE}/hex-core-service"
                   AUTH="$(printf '%s:%s' "${REGISTRY_USERNAME}" "${REGISTRY_PASSWORD}" | base64 | tr -d '\n')"
+                  CONTEXT_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git#${GITHUB_SHA}"
+                  if [ -n "${CI_PUSH_TOKEN:-}" ]; then
+                    CONTEXT_URL="https://${GITHUB_ACTOR}:${CI_PUSH_TOKEN}@${GITHUB_SERVER_URL#https://}/${GITHUB_REPOSITORY}.git#${GITHUB_SHA}"
+                  fi
                   mkdir -p /kaniko/.docker
                   cat > /kaniko/.docker/config.json <<EOF
                   {"auths":{"${REGISTRY_HOST}":{"auth":"${AUTH}"}}}
                   EOF
                   /kaniko/executor \
-                    --context "${GITHUB_WORKSPACE}" \
-                    --dockerfile "${GITHUB_WORKSPACE}/Dockerfile" \
+                    --context "${CONTEXT_URL}" \
+                    --dockerfile "Dockerfile" \
                     --destination "${IMAGE_BASE}:${VERSION}" \
                     --destination "${IMAGE_BASE}:${GITHUB_SHA}"
 
