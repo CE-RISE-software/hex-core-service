@@ -25,6 +25,11 @@ jobs:
               with:
                   node-version: "20"
 
+            - name: Setup Go
+              uses: https://github.com/actions/setup-go@v5
+              with:
+                  go-version: "1.22"
+
             - name: Generate Go, TypeScript, and Python SDKs
               run: |
                   set -euo pipefail
@@ -39,7 +44,12 @@ jobs:
                     -g go \
                     -i "crates/api/src/openapi.json" \
                     -o "dist/sdks/go" \
-                    --additional-properties=packageName=hexcoresdk,enumClassPrefix=true,packageVersion="${GO_VERSION}",gitUserId=CE-RISE-software,gitRepoId=hex-core-sdk-go
+                    --git-user-id CE-RISE-software \
+                    --git-repo-id hex-core-sdk-go \
+                    --additional-properties=packageName=hexcoresdk,enumClassPrefix=true,packageVersion="${GO_VERSION}"
+
+                  # Resolve generated test dependencies (e.g. testify) in go.mod/go.sum.
+                  (cd dist/sdks/go && go mod tidy)
 
                   npx -y @openapitools/openapi-generator-cli@2.15.3 generate \
                     -g typescript-fetch \
