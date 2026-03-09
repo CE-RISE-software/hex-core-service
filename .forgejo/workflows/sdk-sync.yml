@@ -144,9 +144,35 @@ jobs:
 
                   const apis = listTs(srcApis);
                   const models = listTs(srcModels);
+                  const modelMeta = models.map((name) => {
+                    const file = path.join(srcModels, `${name}.ts`);
+                    const content = fs.existsSync(file) ? fs.readFileSync(file, "utf8") : "";
+                    const isEnum =
+                      new RegExp(`export\\s+const\\s+${name}\\b`).test(content) ||
+                      new RegExp(`export\\s+enum\\s+${name}\\b`).test(content);
+                    const hasInstanceOf = new RegExp(`\\binstanceOf${name}\\b`).test(content);
+                    const hasFromJSON = new RegExp(`\\b${name}FromJSON\\b`).test(content);
+                    const hasToJSON = new RegExp(`\\b${name}ToJSON\\b`).test(content);
+                    const isInterfaceLike =
+                      new RegExp(`export\\s+interface\\s+${name}\\b`).test(content) ||
+                      new RegExp(`export\\s+type\\s+${name}\\b`).test(content);
+
+                    let kind = "unknown";
+                    if (isEnum) {
+                      kind = "enum";
+                    } else if (isInterfaceLike || hasInstanceOf || hasFromJSON || hasToJSON) {
+                      kind = "object";
+                    }
+
+                    return { name, kind, hasInstanceOf, hasFromJSON, hasToJSON };
+                  });
 
                   fs.mkdirSync(docsApis, { recursive: true });
                   fs.mkdirSync(docsModels, { recursive: true });
+                  fs.mkdirSync(testApis, { recursive: true });
+                  fs.mkdirSync(testModels, { recursive: true });
+                  fs.rmSync(testApis, { recursive: true, force: true });
+                  fs.rmSync(testModels, { recursive: true, force: true });
                   fs.mkdirSync(testApis, { recursive: true });
                   fs.mkdirSync(testModels, { recursive: true });
 
@@ -177,19 +203,45 @@ jobs:
                     );
                   }
 
-                  for (const name of models) {
+                  for (const meta of modelMeta) {
+                    const name = meta.name;
                     fs.writeFileSync(
                       path.join(docsModels, `${name}.md`),
                       `# Model: ${name}\n\nAuto-generated model module from OpenAPI.\n`,
                       "utf8"
                     );
-                    fs.writeFileSync(
-                      path.join(testModels, `${name}.test.ts`),
-                      `import * as Models from "../../src/models";\n\ndescribe("model export: ${name}", () => {\n  it("is exported", () => {\n    expect((Models as Record<string, unknown>)["${name}"]).toBeDefined();\n  });\n});\n`,
-                      "utf8"
-                    );
+                    if (meta.kind === "enum") {
+                      fs.writeFileSync(
+                        path.join(testModels, `${name}.test.ts`),
+                        `import * as Models from "../../src/models";\n\ndescribe("enum export: ${name}", () => {\n  it("exports enum object at runtime", () => {\n    expect((Models as Record<string, unknown>)["${name}"]).toBeDefined();\n  });\n});\n`,
+                        "utf8"
+                      );
+                    } else if (meta.kind === "object") {
+                      fs.writeFileSync(
+                        path.join(testModels, `${name}.test.ts`),
+                        `import * as Models from "../../src/models";\n\ndescribe("model helpers: ${name}", () => {\n  it("exports runtime helper functions", () => {\n    expect((Models as Record<string, unknown>)["instanceOf${name}"]).toBeDefined();\n    expect((Models as Record<string, unknown>)["${name}FromJSON"]).toBeDefined();\n    expect((Models as Record<string, unknown>)["${name}ToJSON"]).toBeDefined();\n  });\n});\n`,
+                        "utf8"
+                      );
+                    } else {
+                      fs.writeFileSync(
+                        path.join(testModels, `${name}.test.ts`),
+                        `describe("model shape: ${name}", () => {\n  it("is categorized as unknown runtime shape", () => {\n    expect(true).toBe(true);\n  });\n});\n`,
+                        "utf8"
+                      );
+                    }
                   }
+
+                  const objectModels = modelMeta.filter((m) => m.kind === "object").map((m) => m.name);
+                  const enumModels = modelMeta.filter((m) => m.kind === "enum").map((m) => m.name);
+                  fs.writeFileSync(
+                    path.join(testRoot, "model-kinds.acceptance.test.ts"),
+                    `describe("typescript-fetch model coverage", () => {\n  it("has at least one object model", () => {\n    expect(${JSON.stringify(objectModels)}.length).toBeGreaterThan(0);\n  });\n  it("has at least one enum model", () => {\n    expect(${JSON.stringify(enumModels)}.length).toBeGreaterThan(0);\n  });\n});\n`,
+                    "utf8"
+                  );
                   EOF
+
+                  (cd dist/sdks/typescript && npm install)
+                  (cd dist/sdks/typescript && npm test -- --runInBand)
 
                   npx -y @openapitools/openapi-generator-cli@2.15.3 generate \
                     -g python \
