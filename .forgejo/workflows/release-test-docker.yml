@@ -9,6 +9,26 @@ jobs:
         container:
             image: gcr.io/kaniko-project/executor:debug
         steps:
+            - name: Resolve build context path
+              run: |
+                  set -euo pipefail
+                  if [ -n "${GITHUB_WORKSPACE:-}" ] && [ -f "${GITHUB_WORKSPACE}/Dockerfile" ]; then
+                    echo "CONTEXT_DIR=${GITHUB_WORKSPACE}" >> "$GITHUB_ENV"
+                    exit 0
+                  fi
+                  if [ -f "/workspace/CE-RISE-software/hex-core-service/Dockerfile" ]; then
+                    echo "CONTEXT_DIR=/workspace/CE-RISE-software/hex-core-service" >> "$GITHUB_ENV"
+                    exit 0
+                  fi
+                  if [ -f "/workspace/Dockerfile" ]; then
+                    echo "CONTEXT_DIR=/workspace" >> "$GITHUB_ENV"
+                    exit 0
+                  fi
+                  echo "Could not find Dockerfile in known workspace paths."
+                  ls -la /
+                  ls -la /workspace || true
+                  exit 1
+
             - name: Compute image tags
               id: meta
               run: |
@@ -34,8 +54,8 @@ jobs:
                   {"auths":{"${REGISTRY_HOST}":{"auth":"${AUTH}"}}}
                   EOF
                   /kaniko/executor \
-                    --context "." \
-                    --dockerfile "Dockerfile" \
+                    --context "${CONTEXT_DIR}" \
+                    --dockerfile "${CONTEXT_DIR}/Dockerfile" \
                     --destination "${IMAGE_BASE}:${SHORT_SHA}" \
                     --destination "${IMAGE_BASE}:${TEST_TAG}"
 
