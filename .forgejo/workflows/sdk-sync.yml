@@ -38,9 +38,21 @@ jobs:
             - name: Generate Go, TypeScript, and Python SDKs
               run: |
                   set -euo pipefail
-                  TS_VERSION="0.0.0-commit.${GITHUB_RUN_NUMBER}"
-                  PY_VERSION="0.0.0.dev${GITHUB_RUN_NUMBER}"
-                  GO_VERSION="0.0.0-commit.${GITHUB_RUN_NUMBER}"
+                  OPENAPI_VERSION="$(python - <<'PY'
+                  import json
+                  from pathlib import Path
+                  data = json.loads(Path("crates/api/src/openapi.json").read_text())
+                  print(data["info"]["version"])
+                  PY
+                  )"
+                  if [ -z "${OPENAPI_VERSION}" ]; then
+                    echo "Could not read info.version from crates/api/src/openapi.json"
+                    exit 1
+                  fi
+                  export OPENAPI_VERSION
+                  TS_VERSION="${OPENAPI_VERSION}"
+                  PY_VERSION="${OPENAPI_VERSION}"
+                  GO_VERSION="${OPENAPI_VERSION}"
                   mkdir -p dist/sdks
 
                   npx -y @openapitools/openapi-generator-cli@2.15.3 version-manager set 7.10.0
@@ -304,6 +316,7 @@ jobs:
 
                   # Ensure package version is consistent across generated metadata files.
                   python - <<'EOF'
+                  import os
                   import re
                   from pathlib import Path
 
@@ -311,6 +324,7 @@ jobs:
                   init_py = (root / "ce_rise_hex_core_sdk" / "__init__.py").read_text()
                   pyproject = (root / "pyproject.toml").read_text()
                   setup_py = (root / "setup.py").read_text()
+                  expected = os.environ["OPENAPI_VERSION"]
 
                   def extract(pattern, text, label, required=True):
                       m = re.search(pattern, text, re.M)
@@ -321,18 +335,22 @@ jobs:
                       return m.group(1)
 
                   v_init = extract(r'__version__\\s*=\\s*[\"\\\']([^\"\\\']+)[\"\\\']', init_py, "__init__.py", required=False)
-                  v_pyproject = extract(r'^version\\s*=\\s*[\"\\\']([^\"\\\']+)[\"\\\']', pyproject, "pyproject.toml")
+                  v_pyproject = extract(r'^version\\s*=\\s*[\"\\\']([^\"\\\']+)[\"\\\']', pyproject, "pyproject.toml", required=False)
                   v_setup = extract(r'version\\s*=\\s*[\"\\\']([^\"\\\']+)[\"\\\']', setup_py, "setup.py")
 
-                  if v_setup != v_pyproject:
+                  if v_setup != expected:
                       raise SystemExit(
-                          f"Python SDK version mismatch: pyproject={v_pyproject}, setup.py={v_setup}"
+                          f"Python SDK version mismatch: setup.py={v_setup}, expected(openapi)={expected}"
                       )
-                  if v_init is not None and v_init != v_pyproject:
+                  if v_pyproject is not None and v_pyproject != expected:
                       raise SystemExit(
-                          f"Python SDK version mismatch: __init__={v_init}, pyproject={v_pyproject}"
+                          f"Python SDK version mismatch: pyproject={v_pyproject}, expected(openapi)={expected}"
                       )
-                  print(f"Python SDK version synchronized: pyproject/setup={v_pyproject}")
+                  if v_init is not None and v_init != expected:
+                      raise SystemExit(
+                          f"Python SDK version mismatch: __init__={v_init}, expected(openapi)={expected}"
+                      )
+                  print(f"Python SDK version synchronized: {expected}")
                   EOF
 
                   # Basic package quality gate for generated Python SDK.
