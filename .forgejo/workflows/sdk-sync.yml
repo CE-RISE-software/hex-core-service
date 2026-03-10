@@ -323,7 +323,8 @@ jobs:
                   root = Path("dist/sdks/python")
                   init_py = (root / "ce_rise_hex_core_sdk" / "__init__.py").read_text()
                   pyproject = (root / "pyproject.toml").read_text()
-                  setup_py = (root / "setup.py").read_text()
+                  setup_path = root / "setup.py"
+                  setup_py = setup_path.read_text() if setup_path.exists() else ""
                   expected = os.environ["OPENAPI_VERSION"]
 
                   def extract(pattern, text, label, required=True):
@@ -336,9 +337,9 @@ jobs:
 
                   v_init = extract(r'__version__\\s*=\\s*[\"\\\']([^\"\\\']+)[\"\\\']', init_py, "__init__.py", required=False)
                   v_pyproject = extract(r'^version\\s*=\\s*[\"\\\']([^\"\\\']+)[\"\\\']', pyproject, "pyproject.toml", required=False)
-                  v_setup = extract(r'version\\s*=\\s*[\"\\\']([^\"\\\']+)[\"\\\']', setup_py, "setup.py")
+                  v_setup = extract(r'version\\s*=\\s*[\"\\\']([^\"\\\']+)[\"\\\']', setup_py, "setup.py", required=False)
 
-                  if v_setup != expected:
+                  if v_setup is not None and v_setup != expected:
                       raise SystemExit(
                           f"Python SDK version mismatch: setup.py={v_setup}, expected(openapi)={expected}"
                       )
@@ -349,6 +350,10 @@ jobs:
                   if v_init is not None and v_init != expected:
                       raise SystemExit(
                           f"Python SDK version mismatch: __init__={v_init}, expected(openapi)={expected}"
+                      )
+                  if v_setup is None and v_pyproject is None and v_init is None:
+                      raise SystemExit(
+                          "Python SDK version check failed: no version token found in setup.py, pyproject.toml, or __init__.py"
                       )
                   print(f"Python SDK version synchronized: {expected}")
                   EOF
