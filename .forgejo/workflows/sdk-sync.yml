@@ -340,6 +340,9 @@ jobs:
                   EOF
 
                   # Basic package quality gate for generated Python SDK.
+                  if [ -f dist/sdks/python/requirements.txt ]; then
+                    (cd dist/sdks/python && python -m pip install -r requirements.txt)
+                  fi
                   (cd dist/sdks/python && python -m unittest discover -s test -v)
 
             - name: Publish Go SDK to external repo
