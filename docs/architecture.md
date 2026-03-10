@@ -6,6 +6,20 @@ The CE-RISE Hex Core Service follows a strict hexagonal (ports and adapters) arc
 The domain and use-case logic in `crates/core` has no knowledge of HTTP, databases, or any
 specific IO provider. All external interactions are mediated through port traits.
 
+## Architecture Views
+
+### Deployment View
+
+![Hex Core Service Deployment View](images/deployment.png)
+
+Hexagonal service deployment view showing inbound interfaces, core orchestration, outbound adapters, and runtime context.
+
+### Digital Passport Interaction View
+
+![Digital Passport Interaction View](images/interaction.png)
+
+Use-case interaction view showing how external consumers and discovery/registry flows interact with the same hex-core service.
+
 The following diagram illustrates the hexagonal architecture pattern used in this service:
 
 ```text

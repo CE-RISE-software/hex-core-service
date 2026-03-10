@@ -1,7 +1,7 @@
 cff-version: 1.2.0
 title: CE-RISE Hex Core Service
 message: >-
-  If you use this software, please cite it using the metadata from this file.
+  v0.0.1 - First full release of service, containerized deployment and SDKs.
 type: software
 version: 0.0.1
 authors:

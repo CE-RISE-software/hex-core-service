@@ -14,6 +14,20 @@ Full technical documentation is published at the project [Pages](https://ce-rise
 - Containerized service image for deployment.
 - OpenAPI-based SDK generation pipeline with dedicated SDK repositories for Go, TypeScript, and Python.
 
+## Architecture Figures
+
+### Deployment View
+
+![Hex Core Service Deployment View](docs/images/deployment.png)
+
+Hexagonal service deployment view showing inbound interfaces, core orchestration, outbound adapters, and runtime context.
+
+### Digital Passport Interaction View
+
+![Digital Passport Interaction View](docs/images/interaction.png)
+
+Use-case interaction view showing how external consumers and discovery/registry flows interact with the same hex-core service.
+
 ## Service Container
 
 ### Pull Image
