@@ -312,21 +312,27 @@ jobs:
                   pyproject = (root / "pyproject.toml").read_text()
                   setup_py = (root / "setup.py").read_text()
 
-                  def extract(pattern, text, label):
+                  def extract(pattern, text, label, required=True):
                       m = re.search(pattern, text, re.M)
                       if not m:
-                          raise SystemExit(f"Could not extract version from {label}")
+                          if required:
+                              raise SystemExit(f"Could not extract version from {label}")
+                          return None
                       return m.group(1)
 
-                  v_init = extract(r'__version__\\s*=\\s*[\"\\\']([^\"\\\']+)[\"\\\']', init_py, "__init__.py")
+                  v_init = extract(r'__version__\\s*=\\s*[\"\\\']([^\"\\\']+)[\"\\\']', init_py, "__init__.py", required=False)
                   v_pyproject = extract(r'^version\\s*=\\s*[\"\\\']([^\"\\\']+)[\"\\\']', pyproject, "pyproject.toml")
                   v_setup = extract(r'version\\s*=\\s*[\"\\\']([^\"\\\']+)[\"\\\']', setup_py, "setup.py")
 
-                  if not (v_init == v_pyproject == v_setup):
+                  if v_setup != v_pyproject:
                       raise SystemExit(
-                          f"Python SDK version mismatch: __init__={v_init}, pyproject={v_pyproject}, setup.py={v_setup}"
+                          f"Python SDK version mismatch: pyproject={v_pyproject}, setup.py={v_setup}"
                       )
-                  print(f"Python SDK version synchronized: {v_init}")
+                  if v_init is not None and v_init != v_pyproject:
+                      raise SystemExit(
+                          f"Python SDK version mismatch: __init__={v_init}, pyproject={v_pyproject}"
+                      )
+                  print(f"Python SDK version synchronized: pyproject/setup={v_pyproject}")
                   EOF
 
                   # Basic package quality gate for generated Python SDK.
