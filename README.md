@@ -35,7 +35,7 @@ docker run --rm -p 8080:8080 \
   -e AUTH_JWKS_URL="https://<idp>/realms/<realm>/protocol/openid-connect/certs" \
   -e AUTH_ISSUER="https://<idp>/realms/<realm>" \
   -e AUTH_AUDIENCE="hex-core-service" \
-  rg.fr-par.scw.cloud/ce-rise/hex-core-service:<tag>
+  rg.fr-par.scw.cloud/ce-rise-software/hex-core-service:<tag>
 ```
 
 ### Required Runtime Parameters
@@ -59,37 +59,15 @@ docker run --rm -p 8080:8080 \
 - TypeScript SDK: https://codeberg.org/CE-RISE-software/hex-core-sdk-typescript
 - Python SDK: https://codeberg.org/CE-RISE-software/hex-core-sdk-python
 
-### Import in Projects
+### Install SDKs
 
-Go (current concrete usage):
+| Language | Install command |
+|---|---|
+| TypeScript | `npm install "@ce-rise/hex-core-sdk-typescript"` |
+| Go | `go get github.com/CE-RISE-software/hex-core-sdk-go@latest` |
+| Python | `pip install ce-rise-hex-core-sdk` |
 
-```go
-import hexsdk "codeberg.org/CE-RISE-software/hex-core-sdk-go"
-```
-
-```bash
-go get codeberg.org/CE-RISE-software/hex-core-sdk-go
-```
-
-TypeScript (npm placeholder, to be finalized when package publication is enabled):
-
-```ts
-import { Configuration } from "@ce-rise/hex-core-sdk";
-```
-
-```bash
-npm install @ce-rise/hex-core-sdk
-```
-
-Python (PyPI placeholder, to be finalized when package publication is enabled):
-
-```python
-from ce_rise_hex_core_sdk import ApiClient
-```
-
-```bash
-pip install ce-rise-hex-core-sdk
-```
+Usage/import examples are maintained in each SDK repository.
 
 ## License
 
