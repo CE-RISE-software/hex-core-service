@@ -1,0 +1,79 @@
+name: Sync CITATION.cff Version
+
+on:
+    push:
+        tags:
+            - "v*.*.*"
+            - "v*.*.*-*"
+    workflow_dispatch:
+        inputs:
+            tag:
+                description: "Tag to sync from (e.g. v1.2.3 or v1.2.3-rc.1)"
+                required: true
+                type: string
+
+jobs:
+    sync-cff:
+        runs-on: codeberg-small
+        permissions:
+            contents: write
+
+        steps:
+            - name: Checkout default branch
+              uses: https://github.com/actions/checkout@v4
+              with:
+                  ref: main
+
+            - name: Resolve version from tag
+              run: |
+                  RAW_TAG="${{ inputs.tag }}"
+                  if [ -z "$RAW_TAG" ]; then
+                    RAW_TAG="$GITHUB_REF_NAME"
+                  fi
+
+                  if [ -z "$RAW_TAG" ]; then
+                    echo "Tag is empty"
+                    exit 1
+                  fi
+
+                  if [[ ! "$RAW_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$ ]]; then
+                    echo "Tag '$RAW_TAG' is not valid semantic version format (expected vX.Y.Z)"
+                    exit 1
+                  fi
+
+                  VERSION="${RAW_TAG#v}"
+                  echo "RAW_TAG=$RAW_TAG" >> "$GITHUB_ENV"
+                  echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+            - name: Update CITATION.cff
+              run: |
+                  node - <<'NODE'
+                  const fs = require('node:fs');
+
+                  const path = 'CITATION.cff';
+                  const version = process.env.VERSION;
+
+                  let cff = fs.readFileSync(path, 'utf8');
+
+                  if (/^version:\s*/m.test(cff)) {
+                    cff = cff.replace(/^version:\s*.*$/m, `version: ${version}`);
+                  } else {
+                    cff += `\nversion: ${version}\n`;
+                  }
+
+                  fs.writeFileSync(path, cff);
+                  console.log(`Updated ${path} -> version=${version}`);
+                  NODE
+
+            - name: Commit and push if changed
+              run: |
+                  if git diff --quiet -- CITATION.cff; then
+                    echo "CITATION.cff already up to date"
+                    exit 0
+                  fi
+
+                  git config user.email "ci@noreply.codeberg.org"
+                  git config user.name "Forgejo CI"
+                  git add CITATION.cff
+                  git commit -m "chore: sync CITATION.cff version to $VERSION [skip ci]"
+                  git push origin HEAD:main
