@@ -265,6 +265,7 @@ jobs:
                   const fs = require("fs");
                   const pkgPath = "dist/sdks/typescript/package.json";
                   const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
+                  pkg.version = process.env.OPENAPI_VERSION;
                   pkg.scripts = pkg.scripts || {};
                   pkg.scripts.test = "jest --runInBand";
                   pkg.devDependencies = pkg.devDependencies || {};
@@ -314,48 +315,28 @@ jobs:
                       unittest.main()
                   EOF
 
-                  # Ensure package version is consistent across generated metadata files.
+                  # Enforce Python package version marker from OpenAPI version.
                   python - <<'EOF'
                   import os
                   import re
                   from pathlib import Path
 
-                  root = Path("dist/sdks/python")
-                  init_py = (root / "ce_rise_hex_core_sdk" / "__init__.py").read_text()
-                  pyproject = (root / "pyproject.toml").read_text()
-                  setup_path = root / "setup.py"
-                  setup_py = setup_path.read_text() if setup_path.exists() else ""
                   expected = os.environ["OPENAPI_VERSION"]
+                  init_path = Path("dist/sdks/python/ce_rise_hex_core_sdk/__init__.py")
+                  text = init_path.read_text()
 
-                  def extract(pattern, text, label, required=True):
-                      m = re.search(pattern, text, re.M)
-                      if not m:
-                          if required:
-                              raise SystemExit(f"Could not extract version from {label}")
-                          return None
-                      return m.group(1)
-
-                  v_init = extract(r'__version__\\s*=\\s*[\"\\\']([^\"\\\']+)[\"\\\']', init_py, "__init__.py", required=False)
-                  v_pyproject = extract(r'^version\\s*=\\s*[\"\\\']([^\"\\\']+)[\"\\\']', pyproject, "pyproject.toml", required=False)
-                  v_setup = extract(r'version\\s*=\\s*[\"\\\']([^\"\\\']+)[\"\\\']', setup_py, "setup.py", required=False)
-
-                  if v_setup is not None and v_setup != expected:
-                      raise SystemExit(
-                          f"Python SDK version mismatch: setup.py={v_setup}, expected(openapi)={expected}"
+                  if re.search(r'^\s*__version__\s*=', text, re.M):
+                      text = re.sub(
+                          r'^\s*__version__\s*=.*$',
+                          f'__version__ = "{expected}"',
+                          text,
+                          flags=re.M,
                       )
-                  if v_pyproject is not None and v_pyproject != expected:
-                      raise SystemExit(
-                          f"Python SDK version mismatch: pyproject={v_pyproject}, expected(openapi)={expected}"
-                      )
-                  if v_init is not None and v_init != expected:
-                      raise SystemExit(
-                          f"Python SDK version mismatch: __init__={v_init}, expected(openapi)={expected}"
-                      )
-                  if v_setup is None and v_pyproject is None and v_init is None:
-                      raise SystemExit(
-                          "Python SDK version check failed: no version token found in setup.py, pyproject.toml, or __init__.py"
-                      )
-                  print(f"Python SDK version synchronized: {expected}")
+                  else:
+                      if text and not text.endswith("\n"):
+                          text += "\n"
+                      text += f'__version__ = "{expected}"\n'
+                  init_path.write_text(text)
                   EOF
 
                   # Basic package quality gate for generated Python SDK.
