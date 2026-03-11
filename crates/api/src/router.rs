@@ -67,6 +67,7 @@ pub fn build(state: Arc<AppState>, authn: AuthProviderHandle) -> Router {
 
     Router::new()
         .route("/admin/health", get(admin::health))
+        .route("/admin/version", get(admin::version))
         .merge(protected)
         .with_state(state)
 }

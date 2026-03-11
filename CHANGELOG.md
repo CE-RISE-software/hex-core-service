@@ -2,6 +2,14 @@
 
 All notable changes to `hex-core-service` are documented in this file.
 
+
+## [0.0.3] - 03-11-2026
+
+### Added
+- New endpoint `GET /admin/version`
+- Version response schema
+
+
 ## [0.0.2] - 03-11-2026
 
 ### Fixed

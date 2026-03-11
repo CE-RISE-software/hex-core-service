@@ -1,10 +1,10 @@
 cff-version: 1.2.0
 title: CE-RISE Hex Core Service
 message: >-
-  v0.0.2 - Refine testing and CI/CD deployment.
+  v0.0.3 - Add service version endpoint.
 type: software
 doi: 10.5281/zenodo.18952629
-version: 0.0.2
+version: 0.0.3
 authors:
   - given-names: Riccardo
     family-names: Boero

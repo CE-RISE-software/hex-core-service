@@ -2,7 +2,7 @@
     "openapi": "3.0.3",
     "info": {
         "title": "CE-RISE Hex Core Service API",
-        "version": "0.0.2",
+        "version": "0.0.3",
         "description": "Public and admin API for validating, creating, and querying records against versioned CE-RISE model artifacts."
     },
     "servers": [
@@ -322,6 +322,26 @@
                 }
             }
         },
+        "/admin/version": {
+            "get": {
+                "tags": ["Admin"],
+                "operationId": "version",
+                "summary": "Service and OpenAPI version",
+                "description": "Returns running service version and bundled OpenAPI specification version.",
+                "responses": {
+                    "200": {
+                        "description": "Version payload returned.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/VersionResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/admin/ready": {
             "get": {
                 "tags": ["Admin"],
@@ -554,6 +574,25 @@
                         "type": "string",
                         "description": "Health status string.",
                         "example": "ok"
+                    }
+                }
+            },
+            "VersionResponse": {
+                "type": "object",
+                "required": ["service", "service_version", "openapi_version"],
+                "properties": {
+                    "service": {
+                        "type": "string",
+                        "description": "Stable service identifier.",
+                        "example": "hex-core-service"
+                    },
+                    "service_version": {
+                        "type": "string",
+                        "description": "Running service build version from crate metadata."
+                    },
+                    "openapi_version": {
+                        "type": "string",
+                        "description": "Bundled OpenAPI document version from info.version."
                     }
                 }
             },
