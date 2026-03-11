@@ -20,13 +20,13 @@ Full technical documentation is published at the project [Pages](https://ce-rise
 
 <img src="docs/images/deployment.png" alt="Hex Core Service Deployment View" width="600" />
 
-Hexagonal service deployment view showing inbound interfaces, core orchestration, outbound adapters, and runtime context.
+Deployment-oriented architecture view of the hex-core service, showing inbound interfaces, core orchestration, outbound adapters, and runtime dependencies in one deployable unit.
 
 ### Digital Passport Interaction View
 
 <img src="docs/images/interaction.png" alt="Digital Passport Interaction View" width="600"/>
 
-Use-case interaction view showing how external consumers and discovery/registry flows interact with the same hex-core service.
+Digital Passport interaction flow showing both external consumption and internal processing: clients submit/query records, the core resolves model artifacts from registry/catalog sources, validates payloads, and reads/writes through configured backend adapters.
 
 ## Service Container
 
