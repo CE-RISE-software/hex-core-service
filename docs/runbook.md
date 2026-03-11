@@ -100,6 +100,21 @@ readinessProbe:
 }
 ```
 
+### Version and Model Count Quick Check
+
+Use these lightweight probes during rollout validation:
+
+```bash
+curl http://localhost:8080/admin/version
+curl http://localhost:8080/admin/models/count
+```
+
+Expected:
+
+- `/admin/version` returns both `service_version` and `openapi_version`.
+- `/admin/models/count` returns a non-negative integer.
+- `models_count = 0` is valid when registry is empty/not loaded yet.
+
 ---
 
 ## Registry Refresh Flow

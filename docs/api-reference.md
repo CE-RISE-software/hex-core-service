@@ -162,10 +162,30 @@ GET /openapi.json
 | Method | Path | Description |
 |---|---|---|
 | `GET` | `/admin/health` | Liveness probe |
+| `GET` | `/admin/version` | Service/OpenAPI version probe |
+| `GET` | `/admin/models/count` | Number of currently indexed models |
 | `GET` | `/admin/ready` | Readiness probe |
 | `GET` | `/admin/status` | Runtime status |
 | `GET` | `/admin/metrics` | Prometheus metrics (`METRICS_ENABLED=true`) |
 | `POST` | `/admin/registry/refresh` | Reload registry catalog/artifacts |
+
+Version response shape:
+
+```json
+{
+  "service": "hex-core-service",
+  "service_version": "0.1.0",
+  "openapi_version": "0.0.2"
+}
+```
+
+Model count response shape:
+
+```json
+{
+  "models_count": 3
+}
+```
 
 Refresh response shape:
 
