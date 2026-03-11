@@ -2,7 +2,7 @@
 
 All notable changes to `hex-core-service` are documented in this file.
 
-## [0.0.1] - 03-10-2026
+## [0.0.1] - 03-11-2026
 
 ### Added
 - Hexagonal Rust workspace with core domain, port traits, and use-case implementations.
