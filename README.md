@@ -18,7 +18,7 @@ Full technical documentation is published at the project [Pages](https://ce-rise
 
 ### Deployment View
 
-<img src="docs/images/deployment.png" alt="Hex Core Service Deployment View" width="700" />
+<img src="docs/images/deployment.png" alt="Hex Core Service Deployment View" width="600" />
 
 Hexagonal service deployment view showing inbound interfaces, core orchestration, outbound adapters, and runtime context.
 
