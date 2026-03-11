@@ -1,6 +1,6 @@
 # CE-RISE Hex Core Service
 
-[![DOI](https://zenodo.org/badge/10.5281/zenodo.18952629.svg)](https://doi.org/10.5281/zenodo.18952629)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18952629.svg)](https://doi.org/10.5281/zenodo.18952629)
 
 A Rust-based hexagonal core service that validates and orchestrates IO for versioned, digital-passport-like records using externally published model artifacts.
 
