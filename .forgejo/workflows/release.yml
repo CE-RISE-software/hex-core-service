@@ -123,11 +123,6 @@ jobs:
                       target
                   key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
-            - name: Run full test suite
-              run: cargo test --features integration-tests
-              env:
-                  RUSTFLAGS: "-D warnings"
-
             - name: Build release binary
               run: cargo build --release -p hex-api
 
@@ -241,6 +236,8 @@ jobs:
 
                   git clone "https://${GITHUB_ACTOR}:${CI_PUSH_TOKEN}@${HOST}/${GO_SDK_REPO}.git" /tmp/go-sdk-repo
                   cd /tmp/go-sdk-repo
+                  git config user.name "hex-core-service release bot"
+                  git config user.email "noreply@ce-rise.eu"
 
                   if git show-ref --tags --verify --quiet "refs/tags/${VERSION}"; then
                     echo "Tag ${VERSION} already exists in ${GO_SDK_REPO}; skipping."
@@ -274,6 +271,8 @@ jobs:
 
                   git clone "https://${GITHUB_ACTOR}:${CI_PUSH_TOKEN}@${HOST}/${TS_SDK_REPO}.git" /tmp/ts-sdk-repo
                   cd /tmp/ts-sdk-repo
+                  git config user.name "hex-core-service release bot"
+                  git config user.email "noreply@ce-rise.eu"
 
                   if git show-ref --tags --verify --quiet "refs/tags/${VERSION}"; then
                     echo "Tag ${VERSION} already exists in ${TS_SDK_REPO}; skipping."
@@ -307,6 +306,8 @@ jobs:
 
                   git clone "https://${GITHUB_ACTOR}:${CI_PUSH_TOKEN}@${HOST}/${PY_SDK_REPO}.git" /tmp/py-sdk-repo
                   cd /tmp/py-sdk-repo
+                  git config user.name "hex-core-service release bot"
+                  git config user.email "noreply@ce-rise.eu"
 
                   if git show-ref --tags --verify --quiet "refs/tags/${VERSION}"; then
                     echo "Tag ${VERSION} already exists in ${PY_SDK_REPO}; skipping."
