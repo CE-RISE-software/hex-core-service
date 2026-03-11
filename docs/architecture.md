@@ -8,19 +8,19 @@ specific IO provider. All external interactions are mediated through port traits
 
 ## Architecture Views
 
-### Deployment View
-
-![Hex Core Service Deployment View](images/deployment.png)
-
-Deployment-oriented architecture view of the hex-core service, showing inbound interfaces, core orchestration, outbound adapters, and runtime dependencies in one deployable unit.
-
 ### Digital Passport Interaction View
 
 ![Digital Passport Interaction View](images/interaction.png)
 
 Digital Passport interaction flow showing both external consumption and internal processing: clients submit/query records, the core resolves model artifacts from registry/catalog sources, validates payloads, and reads/writes through configured backend adapters.
 
-The following diagram illustrates the hexagonal architecture pattern used in this service:
+### Deployment View
+
+![Hex Core Service Deployment View](images/deployment.png)
+
+Deployment-oriented architecture view of the hex-core service, showing inbound interfaces, core orchestration, outbound adapters, and runtime dependencies in one deployable unit.
+
+The hexagonal architecture pattern used in this service is also illustrated in the following diagram:
 
 ```text
                     ┌──────────────────────────────────────┐
