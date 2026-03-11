@@ -18,13 +18,13 @@ Full technical documentation is published at the project [Pages](https://ce-rise
 
 ### Deployment View
 
-![Hex Core Service Deployment View](docs/images/deployment.png)
+<img src="docs/images/deployment.png" alt="Hex Core Service Deployment View" width="800" />
 
 Hexagonal service deployment view showing inbound interfaces, core orchestration, outbound adapters, and runtime context.
 
 ### Digital Passport Interaction View
 
-![Digital Passport Interaction View](docs/images/interaction.png)
+<img src="docs/images/interaction.png" alt="Digital Passport Interaction View" width="800"/>
 
 Use-case interaction view showing how external consumers and discovery/registry flows interact with the same hex-core service.
 
