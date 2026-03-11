@@ -96,7 +96,7 @@ pub trait RecordStorePort: Send + Sync {
 
 **Parameters:**
 - `ctx` — Security context
-- `filter` — JSON query expression (adapter-specific format)
+- `filter` — Canonical JSON query expression defined by hex-core
 
 **Returns:**
 - `Ok(Vec<Record>)` — Matching records (may be empty)
@@ -104,9 +104,76 @@ pub trait RecordStorePort: Send + Sync {
 
 **Requirements:**
 - Must enforce authorization (filter results to user's scope)
-- Filter format is adapter-specific; document in adapter README
-- Should support pagination (implementation-specific)
+- Must implement the canonical query dialect defined below
+- Must support `limit` and `offset`
 - May return empty results if no matches found
+
+#### Canonical query dialect
+
+Backend adapters must accept `POST /records/query` with:
+
+```json
+{
+  "filter": {
+    "where": [
+      { "field": "id", "op": "eq", "value": "record-001" },
+      { "field": "payload.record_scope", "op": "eq", "value": "product" }
+    ],
+    "sort": [
+      { "field": "created_at", "direction": "desc" }
+    ],
+    "limit": 50,
+    "offset": 0
+  }
+}
+```
+
+Dialect rules:
+
+- `where` is an AND-only list of predicates
+- `sort` is optional
+- `limit` is optional and should default to an implementation-defined safe value
+- `offset` is optional and defaults to `0`
+- Results must be returned as full `Record` objects
+
+Supported operators:
+
+- `eq`
+- `ne`
+- `in`
+- `contains`
+- `exists`
+- `gt`
+- `gte`
+- `lt`
+- `lte`
+
+Field path rules:
+
+- Storage/root fields: `id`, `model`, `version`, `created_at`, `updated_at`
+- Payload fields: dotted paths under `payload`, for example `payload.record_scope`
+- Array addressing may use zero-based brackets, for example `payload.applied_schemas[0].schema_url`
+
+Required semantics:
+
+- `eq`, `ne`, `gt`, `gte`, `lt`, `lte` compare scalar values
+- `in` expects `value` to be an array
+- `contains` is for substring containment on strings or membership in arrays
+- `exists` expects boolean `value`
+
+Out of scope for v1:
+
+- OR groups
+- nested boolean trees
+- joins
+- aggregates
+- backend-native raw query fragments
+
+Error behavior:
+
+- Invalid query shape should map to a client error in the backend HTTP API
+- Unsupported field/operator combinations must be rejected explicitly, not ignored silently
+- Backends should document any storage-specific limits, but must preserve the canonical wire shape
 
 ### Error Types
 

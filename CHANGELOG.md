@@ -2,6 +2,13 @@
 
 All notable changes to `hex-core-service` are documented in this file.
 
+## [0.0.5] - 03-11-2026
+
+### Changed
+- Formalized the canonical JSON query dialect for record store backends in the adapter contract.
+- Constrained the OpenAPI `QueryRequest.filter` schema to the shared query structure (`where`, `sort`, `limit`, `offset`).
+- Documented supported query operators and field path rules for backend adapter alignment.
+
 ## [0.0.4] - 03-11-2026
 
 ### Added

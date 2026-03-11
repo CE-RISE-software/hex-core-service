@@ -568,9 +568,7 @@
                 "required": ["filter"],
                 "properties": {
                     "filter": {
-                        "type": "object",
-                        "additionalProperties": true,
-                        "description": "Adapter-specific filter object for query execution."
+                        "$ref": "#/components/schemas/RecordQueryFilter"
                     }
                 }
             },
@@ -585,6 +583,85 @@
                         }
                     }
                 }
+            },
+            "RecordQueryFilter": {
+                "type": "object",
+                "required": ["where"],
+                "properties": {
+                    "where": {
+                        "type": "array",
+                        "description": "AND-only list of query predicates.",
+                        "items": {
+                            "$ref": "#/components/schemas/RecordQueryCondition"
+                        }
+                    },
+                    "sort": {
+                        "type": "array",
+                        "description": "Optional list of sort directives applied in order.",
+                        "items": {
+                            "$ref": "#/components/schemas/RecordQuerySort"
+                        }
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "format": "int64",
+                        "minimum": 0,
+                        "description": "Maximum number of records to return."
+                    },
+                    "offset": {
+                        "type": "integer",
+                        "format": "int64",
+                        "minimum": 0,
+                        "description": "Zero-based row offset for pagination."
+                    }
+                },
+                "additionalProperties": false,
+                "description": "Canonical backend query dialect shared across record store adapters."
+            },
+            "RecordQueryCondition": {
+                "type": "object",
+                "required": ["field", "op", "value"],
+                "properties": {
+                    "field": {
+                        "type": "string",
+                        "description": "Field path such as `id` or `payload.record_scope`."
+                    },
+                    "op": {
+                        "type": "string",
+                        "enum": [
+                            "eq",
+                            "ne",
+                            "in",
+                            "contains",
+                            "exists",
+                            "gt",
+                            "gte",
+                            "lt",
+                            "lte"
+                        ],
+                        "description": "Comparison operator."
+                    },
+                    "value": {
+                        "description": "Operand value. For `in` this must be an array. For `exists` this should be boolean."
+                    }
+                },
+                "additionalProperties": false
+            },
+            "RecordQuerySort": {
+                "type": "object",
+                "required": ["field", "direction"],
+                "properties": {
+                    "field": {
+                        "type": "string",
+                        "description": "Sortable field path such as `created_at` or `payload.record_scope`."
+                    },
+                    "direction": {
+                        "type": "string",
+                        "enum": ["asc", "desc"],
+                        "description": "Sort direction."
+                    }
+                },
+                "additionalProperties": false
             },
             "HealthResponse": {
                 "type": "object",

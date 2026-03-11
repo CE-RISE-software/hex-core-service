@@ -1,10 +1,10 @@
 cff-version: 1.2.0
 title: CE-RISE Hex Core Service
 message: >-
-  v0.0.4 - Add models count endpoint.
+  v0.0.5 - Add canonical JSON query dialect for record store backends.
 type: software
 doi: 10.5281/zenodo.18952629
-version: 0.0.4
+version: 0.0.5
 authors:
   - given-names: Riccardo
     family-names: Boero

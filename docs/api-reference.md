@@ -96,7 +96,15 @@ curl -X POST "https://<host>/models/re-indicators-specification/versions/0.0.3:q
   -H "Content-Type: application/json" \
   -d '{
     "filter": {
-      "id": "record-001"
+      "where": [
+        { "field": "id", "op": "eq", "value": "record-001" },
+        { "field": "payload.record_scope", "op": "eq", "value": "product" }
+      ],
+      "sort": [
+        { "field": "created_at", "direction": "desc" }
+      ],
+      "limit": 25,
+      "offset": 0
     }
   }'
 ```
@@ -118,6 +126,30 @@ Example response (`200`):
   ]
 }
 ```
+
+Supported query operators:
+
+- `eq`
+- `ne`
+- `in`
+- `contains`
+- `exists`
+- `gt`
+- `gte`
+- `lt`
+- `lte`
+
+Field path rules:
+
+- Storage/root fields: `id`, `model`, `version`, `created_at`, `updated_at`
+- Payload fields under `payload`, for example `payload.record_scope`
+- Array positions may be addressed with brackets, for example `payload.applied_schemas[0].schema_url`
+
+Query v1 constraints:
+
+- `where` is AND-only
+- no OR groups or nested boolean trees
+- no backend-specific raw query fragments
 
 ## Public Introspection
 
