@@ -247,6 +247,45 @@ jobs:
                   git tag -a "${VERSION}" -m "Release ${VERSION}"
                   git push origin "refs/tags/${VERSION}"
 
+            - name: Create Go SDK release from forwarded tag
+              env:
+                  VERSION: ${{ steps.tag.outputs.VERSION }}
+                  GO_SDK_REPO: ${{ vars.GO_SDK_REPO }}
+                  GO_SDK_GIT_HOST: ${{ vars.GO_SDK_GIT_HOST }}
+                  CI_PUSH_TOKEN: ${{ secrets.CI_PUSH_TOKEN }}
+              run: |
+                  set -euo pipefail
+                  HOST="${GO_SDK_GIT_HOST:-codeberg.org}"
+                  API="https://${HOST}/api/v1/repos/${GO_SDK_REPO}"
+                  AUTH_HEADER="Authorization: token ${CI_PUSH_TOKEN}"
+
+                  STATUS="$(curl -sS -o /tmp/go-release-check.json -w '%{http_code}' \
+                    -H "${AUTH_HEADER}" \
+                    "${API}/releases/tags/${VERSION}")"
+                  if [ "${STATUS}" = "200" ]; then
+                    echo "Release ${VERSION} already exists in ${GO_SDK_REPO}; skipping."
+                    exit 0
+                  fi
+                  if [ "${STATUS}" != "404" ]; then
+                    echo "Unexpected response while checking release: HTTP ${STATUS}"
+                    cat /tmp/go-release-check.json || true
+                    exit 1
+                  fi
+
+                  PRERELEASE=false
+                  if [[ "${VERSION}" == *-* ]]; then PRERELEASE=true; fi
+
+                  curl -fsS -X POST "${API}/releases" \
+                    -H "${AUTH_HEADER}" \
+                    -H "Content-Type: application/json" \
+                    -d "{
+                      \"tag_name\": \"${VERSION}\",
+                      \"name\": \"Release ${VERSION}\",
+                      \"body\": \"Automated release created from forwarded tag ${VERSION}.\",
+                      \"draft\": false,
+                      \"prerelease\": ${PRERELEASE}
+                    }"
+
     sdk-ts-forward-tag:
         runs-on: codeberg-tiny
         steps:
@@ -282,6 +321,45 @@ jobs:
                   git tag -a "${VERSION}" -m "Release ${VERSION}"
                   git push origin "refs/tags/${VERSION}"
 
+            - name: Create TypeScript SDK release from forwarded tag
+              env:
+                  VERSION: ${{ steps.tag.outputs.VERSION }}
+                  TS_SDK_REPO: ${{ vars.TS_SDK_REPO }}
+                  TS_SDK_GIT_HOST: ${{ vars.TS_SDK_GIT_HOST }}
+                  CI_PUSH_TOKEN: ${{ secrets.CI_PUSH_TOKEN }}
+              run: |
+                  set -euo pipefail
+                  HOST="${TS_SDK_GIT_HOST:-codeberg.org}"
+                  API="https://${HOST}/api/v1/repos/${TS_SDK_REPO}"
+                  AUTH_HEADER="Authorization: token ${CI_PUSH_TOKEN}"
+
+                  STATUS="$(curl -sS -o /tmp/ts-release-check.json -w '%{http_code}' \
+                    -H "${AUTH_HEADER}" \
+                    "${API}/releases/tags/${VERSION}")"
+                  if [ "${STATUS}" = "200" ]; then
+                    echo "Release ${VERSION} already exists in ${TS_SDK_REPO}; skipping."
+                    exit 0
+                  fi
+                  if [ "${STATUS}" != "404" ]; then
+                    echo "Unexpected response while checking release: HTTP ${STATUS}"
+                    cat /tmp/ts-release-check.json || true
+                    exit 1
+                  fi
+
+                  PRERELEASE=false
+                  if [[ "${VERSION}" == *-* ]]; then PRERELEASE=true; fi
+
+                  curl -fsS -X POST "${API}/releases" \
+                    -H "${AUTH_HEADER}" \
+                    -H "Content-Type: application/json" \
+                    -d "{
+                      \"tag_name\": \"${VERSION}\",
+                      \"name\": \"Release ${VERSION}\",
+                      \"body\": \"Automated release created from forwarded tag ${VERSION}.\",
+                      \"draft\": false,
+                      \"prerelease\": ${PRERELEASE}
+                    }"
+
     sdk-py-forward-tag:
         runs-on: codeberg-tiny
         steps:
@@ -316,3 +394,42 @@ jobs:
 
                   git tag -a "${VERSION}" -m "Release ${VERSION}"
                   git push origin "refs/tags/${VERSION}"
+
+            - name: Create Python SDK release from forwarded tag
+              env:
+                  VERSION: ${{ steps.tag.outputs.VERSION }}
+                  PY_SDK_REPO: ${{ vars.PY_SDK_REPO }}
+                  PY_SDK_GIT_HOST: ${{ vars.PY_SDK_GIT_HOST }}
+                  CI_PUSH_TOKEN: ${{ secrets.CI_PUSH_TOKEN }}
+              run: |
+                  set -euo pipefail
+                  HOST="${PY_SDK_GIT_HOST:-codeberg.org}"
+                  API="https://${HOST}/api/v1/repos/${PY_SDK_REPO}"
+                  AUTH_HEADER="Authorization: token ${CI_PUSH_TOKEN}"
+
+                  STATUS="$(curl -sS -o /tmp/py-release-check.json -w '%{http_code}' \
+                    -H "${AUTH_HEADER}" \
+                    "${API}/releases/tags/${VERSION}")"
+                  if [ "${STATUS}" = "200" ]; then
+                    echo "Release ${VERSION} already exists in ${PY_SDK_REPO}; skipping."
+                    exit 0
+                  fi
+                  if [ "${STATUS}" != "404" ]; then
+                    echo "Unexpected response while checking release: HTTP ${STATUS}"
+                    cat /tmp/py-release-check.json || true
+                    exit 1
+                  fi
+
+                  PRERELEASE=false
+                  if [[ "${VERSION}" == *-* ]]; then PRERELEASE=true; fi
+
+                  curl -fsS -X POST "${API}/releases" \
+                    -H "${AUTH_HEADER}" \
+                    -H "Content-Type: application/json" \
+                    -d "{
+                      \"tag_name\": \"${VERSION}\",
+                      \"name\": \"Release ${VERSION}\",
+                      \"body\": \"Automated release created from forwarded tag ${VERSION}.\",
+                      \"draft\": false,
+                      \"prerelease\": ${PRERELEASE}
+                    }"
