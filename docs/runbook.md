@@ -6,6 +6,7 @@ This runbook provides operational procedures for running and maintaining the CE-
 
 - [Health and Readiness Checks](#health-and-readiness-checks)
 - [Registry Refresh Flow](#registry-refresh-flow)
+- [CLI Operational Use](#cli-operational-use)
 - [Authentication Operations](#authentication-operations)
 - [SHACL Validation Operations](#shacl-validation-operations)
 - [OWL Validation Operations](#owl-validation-operations)
@@ -172,6 +173,16 @@ Automatic refresh is **not** implemented by default. If needed, implement it as:
 - A sidecar container with a polling loop
 
 **Recommended Interval:** Every 5-15 minutes, depending on how frequently models are updated.
+
+---
+
+## CLI Operational Use
+
+For operator workflows, use the prebuilt `hex-cli` release assets:
+
+- https://codeberg.org/CE-RISE-software/hex-core-service/releases
+
+This is useful for scripted checks and admin tasks in environments where local Rust toolchains are not installed.
 
 ---
 

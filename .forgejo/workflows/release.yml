@@ -217,129 +217,8 @@ jobs:
                   crane auth login -u "${REGISTRY_USERNAME}" -p "${REGISTRY_PASSWORD}" "${REGISTRY_HOST}"
                   crane copy "${IMAGE_BASE}:${VERSION}" "${IMAGE_BASE}:latest"
 
-    cli-distribution:
-        runs-on: codeberg-tiny
-        needs: cli-binaries
-        if: ${{ vars.CLI_DISTRIBUTION_ENABLED == 'true' }}
-
-        steps:
-            - name: Checkout
-              uses: actions/checkout@v4
-
-            - name: Install Rust toolchain
-              run: |
-                  set -euo pipefail
-                  if ! command -v rustup >/dev/null 2>&1; then
-                    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-                    echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
-                  fi
-                  . "$HOME/.cargo/env"
-                  rustup toolchain install stable --profile minimal
-                  rustup default stable
-                  rustc --version
-                  cargo --version
-
-            - name: Extract version tag
-              id: tag
-              run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
-
-            - name: Download Linux CLI archive
-              uses: https://github.com/actions/download-artifact@v3
-              with:
-                  name: hex-cli-${{ steps.tag.outputs.VERSION }}-linux-x86_64
-                  path: dist/archives/linux
-
-            - name: Download macOS CLI archive
-              uses: https://github.com/actions/download-artifact@v3
-              with:
-                  name: hex-cli-${{ steps.tag.outputs.VERSION }}-macos-x86_64
-                  path: dist/archives/macos
-
-            - name: Download Windows CLI archive
-              uses: https://github.com/actions/download-artifact@v3
-              with:
-                  name: hex-cli-${{ steps.tag.outputs.VERSION }}-windows-x86_64
-                  path: dist/archives/windows
-
-            - name: Normalize archive layout
-              run: |
-                  set -euo pipefail
-                  mkdir -p dist/archives
-                  cp dist/archives/linux/*.tar.gz dist/archives/
-                  cp dist/archives/macos/*.tar.gz dist/archives/
-                  cp dist/archives/windows/*.tar.gz dist/archives/
-
-            - name: Compute archive checksums
-              run: |
-                  set -euo pipefail
-                  cd dist/archives
-                  sha256sum hex-cli-${{ steps.tag.outputs.VERSION }}-linux-x86_64.tar.gz > linux.sha256
-                  sha256sum hex-cli-${{ steps.tag.outputs.VERSION }}-macos-x86_64.tar.gz > macos.sha256
-                  sha256sum hex-cli-${{ steps.tag.outputs.VERSION }}-windows-x86_64.tar.gz > windows.sha256
-
-            - name: Publish hex-cli to crates.io (optional)
-              if: ${{ vars.CLI_CRATES_IO_PUBLISH == 'true' }}
-              run: cargo publish -p hex-cli --token "${{ secrets.CARGO_REGISTRY_TOKEN }}"
-
-            - name: Generate Homebrew and Scoop manifests
-              env:
-                  VERSION: ${{ steps.tag.outputs.VERSION }}
-                  RELEASE_BASE_URL: ${{ vars.CLI_RELEASE_BASE_URL }}
-              run: |
-                  set -euo pipefail
-                  mkdir -p dist/packages
-                  VERSION_NO_V="${VERSION#v}"
-                  if [ -z "${RELEASE_BASE_URL:-}" ]; then
-                    echo "CLI_RELEASE_BASE_URL must be set when CLI_DISTRIBUTION_ENABLED=true"
-                    exit 1
-                  fi
-                  BASE_URL="${RELEASE_BASE_URL}"
-                  LINUX_SHA="$(cut -d' ' -f1 dist/archives/linux.sha256)"
-                  MACOS_SHA="$(cut -d' ' -f1 dist/archives/macos.sha256)"
-                  WINDOWS_SHA="$(cut -d' ' -f1 dist/archives/windows.sha256)"
-
-                  cat > dist/packages/hex-cli.rb <<EOF
-                  class HexCli < Formula
-                    desc "CLI for CE-RISE Hex Core Service"
-                    homepage "https://codeberg.org/CE-RISE-software/hex-core-service"
-                    version "${VERSION_NO_V}"
-                    on_macos do
-                      url "${BASE_URL}/hex-cli-${VERSION}-macos-x86_64.tar.gz"
-                      sha256 "${MACOS_SHA}"
-                    end
-                    on_linux do
-                      url "${BASE_URL}/hex-cli-${VERSION}-linux-x86_64.tar.gz"
-                      sha256 "${LINUX_SHA}"
-                    end
-                    def install
-                      bin.install "hex-cli"
-                    end
-                  end
-                  EOF
-
-                  cat > dist/packages/hex-cli.scoop.json <<EOF
-                  {
-                    "version": "${VERSION_NO_V}",
-                    "description": "CLI for CE-RISE Hex Core Service",
-                    "homepage": "https://codeberg.org/CE-RISE-software/hex-core-service",
-                    "license": "EUPL-1.2",
-                    "url": "${BASE_URL}/hex-cli-${VERSION}-windows-x86_64.tar.gz",
-                    "hash": "${WINDOWS_SHA}",
-                    "bin": "hex-cli.exe"
-                  }
-                  EOF
-
-            - name: Upload CLI distribution manifests
-              uses: https://github.com/actions/upload-artifact@v3
-              with:
-                  name: hex-cli-distribution-${{ steps.tag.outputs.VERSION }}
-                  path: |
-                      dist/packages/hex-cli.rb
-                      dist/packages/hex-cli.scoop.json
-
     sdk-go-forward-tag:
         runs-on: codeberg-tiny
-        if: ${{ vars.SDK_GO_FORWARD_TAG_ENABLED == 'true' }}
         steps:
             - name: Extract version tag
               id: tag
@@ -373,7 +252,6 @@ jobs:
 
     sdk-ts-forward-tag:
         runs-on: codeberg-tiny
-        if: ${{ vars.SDK_TS_FORWARD_TAG_ENABLED == 'true' }}
         steps:
             - name: Extract version tag
               id: tag
@@ -407,7 +285,6 @@ jobs:
 
     sdk-py-forward-tag:
         runs-on: codeberg-tiny
-        if: ${{ vars.SDK_PY_FORWARD_TAG_ENABLED == 'true' }}
         steps:
             - name: Extract version tag
               id: tag

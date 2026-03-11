@@ -1,5 +1,7 @@
 # CE-RISE Hex Core Service
 
+[![DOI](https://zenodo.org/badge/10.5281/zenodo.18952629.svg)](https://doi.org/10.5281/zenodo.18952629)
+
 A Rust-based hexagonal core service that validates and orchestrates IO for versioned, digital-passport-like records using externally published model artifacts.
 
 This is the primary deployable microservice for CE-RISE data integrations. It exposes a model-agnostic REST API, resolves validation artifacts from a versioned catalog of model URLs, and dispatches to pluggable outbound IO adapters — all without coupling to any specific HTTP framework or repository provider.
@@ -82,6 +84,20 @@ docker run --rm -p 8080:8080 \
 | Python | `pip install ce-rise-hex-core-sdk` |
 
 Usage/import examples are maintained in each SDK repository.
+
+## CLI
+
+Prebuilt `hex-cli` executables are published with each tagged release on the Codeberg releases page:
+
+- https://codeberg.org/CE-RISE-software/hex-core-service/releases
+
+Release assets include binaries for:
+
+- Linux
+- macOS
+- Windows
+
+Each release provides platform-specific archives so you can download and run the CLI without building from source.
 
 ## License
 

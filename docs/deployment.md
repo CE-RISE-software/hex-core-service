@@ -7,6 +7,7 @@ This guide covers packaging, containerization, and deployment of the CE-RISE Hex
 - [Local Development](#local-development)
 - [Container Image](#container-image)
 - [Image Tags and Versioning](#image-tags-and-versioning)
+- [CLI Distribution](#cli-distribution)
 - [Environment Configuration](#environment-configuration)
 - [Container Registry](#container-registry)
 - [Kubernetes Deployment](#kubernetes-deployment)
@@ -143,6 +144,22 @@ After releasing version `v1.2.0` from `main` at commit `a1b2c3d`, the following 
 ```
 
 **For production deployments:** Always use explicit version tags (`v1.2.0`) and treat `latest` as convenience.
+
+---
+
+## CLI Distribution
+
+Prebuilt `hex-cli` binaries are published as release assets:
+
+- https://codeberg.org/CE-RISE-software/hex-core-service/releases
+
+Supported operating systems:
+
+- Linux
+- macOS
+- Windows
+
+Use these assets when you need CLI access in automation or terminal workflows without building from source.
 
 ---
 

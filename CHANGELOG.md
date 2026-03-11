@@ -2,6 +2,13 @@
 
 All notable changes to `hex-core-service` are documented in this file.
 
+## [0.0.2] - 03-11-2026
+
+### Fixed
+- Service tests.
+- Deployment pipeline.
+
+
 ## [0.0.1] - 03-11-2026
 
 ### Added

@@ -19,6 +19,11 @@ use serde_json::Value;
 /// Update fixtures, this constant, and the SHACL test file together when bumping.
 const MODEL_VERSION: &str = "0.0.2";
 
+/// Immutable versioned base URL used by live integration tests.
+#[cfg(feature = "integration-tests")]
+const VERSIONED_BASE_URL: &str =
+    "https://codeberg.org/CE-RISE-models/dp-record-metadata/raw/tag/pages-v0.0.2/generated/";
+
 // ── Embedded fixtures ─────────────────────────────────────────────────────────
 
 const SCHEMA: &str = include_str!("fixtures/dp_record_metadata/schema.json");

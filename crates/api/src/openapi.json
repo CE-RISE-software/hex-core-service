@@ -2,7 +2,7 @@
     "openapi": "3.0.3",
     "info": {
         "title": "CE-RISE Hex Core Service API",
-        "version": "0.0.1",
+        "version": "0.0.2",
         "description": "Public and admin API for validating, creating, and querying records against versioned CE-RISE model artifacts."
     },
     "servers": [
