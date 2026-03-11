@@ -2,6 +2,11 @@
 
 All notable changes to `hex-core-service` are documented in this file.
 
+## [0.0.4] - 03-11-2026
+
+### Added
+- New endpoint `GET /admin/models/count` returning the number of currently indexed registry models.
+- OpenAPI path and response schema for `admin/models/count`.
 
 ## [0.0.3] - 03-11-2026
 

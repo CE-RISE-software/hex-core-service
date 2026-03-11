@@ -43,6 +43,22 @@ pub async fn version() -> impl IntoResponse {
     )
 }
 
+pub async fn models_count(State(state): State<Arc<AppState>>) -> impl IntoResponse {
+    let models_count = state
+        .registry
+        .list_models()
+        .await
+        .map(|m| m.len())
+        .unwrap_or(0);
+
+    (
+        StatusCode::OK,
+        Json(json!({
+            "models_count": models_count
+        })),
+    )
+}
+
 pub async fn ready(State(state): State<Arc<AppState>>) -> impl IntoResponse {
     match state.registry.list_models().await {
         Ok(models) if !models.is_empty() => (

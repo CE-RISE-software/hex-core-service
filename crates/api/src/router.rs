@@ -68,6 +68,7 @@ pub fn build(state: Arc<AppState>, authn: AuthProviderHandle) -> Router {
     Router::new()
         .route("/admin/health", get(admin::health))
         .route("/admin/version", get(admin::version))
+        .route("/admin/models/count", get(admin::models_count))
         .merge(protected)
         .with_state(state)
 }
@@ -234,6 +235,10 @@ mod tests {
         let app = Router::new()
             .route("/models", get(crate::handlers::models::list))
             .route(
+                "/admin/models/count",
+                get(crate::handlers::admin::models_count),
+            )
+            .route(
                 "/admin/registry/refresh",
                 post(crate::handlers::admin::registry_refresh),
             )
@@ -251,6 +256,15 @@ mod tests {
         let json: serde_json::Value = response.json().await.expect("json body");
         assert_eq!(json["models"][0]["id"], "model-a");
         assert_eq!(json["models"][0]["version"], "1.0.0");
+
+        let count = http
+            .get(format!("{base_url}/admin/models/count"))
+            .send()
+            .await
+            .expect("request /admin/models/count");
+        assert_eq!(count.status(), 200);
+        let count_json: serde_json::Value = count.json().await.expect("json body");
+        assert_eq!(count_json["models_count"], 1);
 
         let catalog_b = format!(
             r#"{{
@@ -282,6 +296,15 @@ mod tests {
         let json: serde_json::Value = response.json().await.expect("json body");
         assert_eq!(json["models"][0]["id"], "model-b");
         assert_eq!(json["models"][0]["version"], "2.0.0");
+
+        let count = http
+            .get(format!("{base_url}/admin/models/count"))
+            .send()
+            .await
+            .expect("request /admin/models/count");
+        assert_eq!(count.status(), 200);
+        let count_json: serde_json::Value = count.json().await.expect("json body");
+        assert_eq!(count_json["models_count"], 1);
 
         server_handle.abort();
         let _ = tokio::fs::remove_file(&catalog_path).await;

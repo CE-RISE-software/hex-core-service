@@ -2,7 +2,7 @@
     "openapi": "3.0.3",
     "info": {
         "title": "CE-RISE Hex Core Service API",
-        "version": "0.0.3",
+        "version": "0.0.4",
         "description": "Public and admin API for validating, creating, and querying records against versioned CE-RISE model artifacts."
     },
     "servers": [
@@ -342,6 +342,26 @@
                 }
             }
         },
+        "/admin/models/count": {
+            "get": {
+                "tags": ["Admin"],
+                "operationId": "modelsCount",
+                "summary": "Current model count",
+                "description": "Returns the number of model/version entries currently loaded in the active registry index.",
+                "responses": {
+                    "200": {
+                        "description": "Model count returned.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ModelCountResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/admin/ready": {
             "get": {
                 "tags": ["Admin"],
@@ -593,6 +613,18 @@
                     "openapi_version": {
                         "type": "string",
                         "description": "Bundled OpenAPI document version from info.version."
+                    }
+                }
+            },
+            "ModelCountResponse": {
+                "type": "object",
+                "required": ["models_count"],
+                "properties": {
+                    "models_count": {
+                        "type": "integer",
+                        "format": "int64",
+                        "minimum": 0,
+                        "description": "Number of models currently indexed by the registry."
                     }
                 }
             },
