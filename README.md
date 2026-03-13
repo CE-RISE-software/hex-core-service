@@ -6,7 +6,7 @@ A Rust-based hexagonal core service that validates and orchestrates IO for versi
 
 This is the primary deployable microservice for CE-RISE data integrations. It exposes a model-agnostic REST API, resolves validation artifacts from a versioned catalog of model URLs, and dispatches to pluggable outbound IO adapters — all without coupling to any specific HTTP framework or repository provider.
 
-Full technical documentation is published at the project [Pages](https://ce-rise-software.codeberg.page/hex-core-service/) site.
+**Documentation:** [https://ce-rise-software.codeberg.page/hex-core-service/](https://ce-rise-software.codeberg.page/hex-core-service/)
 
 ---
 
