@@ -27,9 +27,9 @@ Example `catalog.json`:
     {
       "model": "re-indicators-specification",
       "version": "0.0.3",
-      "route_url": "https://codeberg.org/CE-RISE-models/re-indicators-specification/src/tag/pages-v0.0.3/generated/route.json",
-      "schema_url": "https://codeberg.org/CE-RISE-models/re-indicators-specification/src/tag/pages-v0.0.3/generated/schema.json",
-      "shacl_url": "https://codeberg.org/CE-RISE-models/re-indicators-specification/src/tag/pages-v0.0.3/generated/shacl.ttl"
+      "route_url": "https://codeberg.org/CE-RISE-models/re-indicators-specification/raw/tag/pages-v0.0.3/generated/route.json",
+      "schema_url": "https://codeberg.org/CE-RISE-models/re-indicators-specification/raw/tag/pages-v0.0.3/generated/schema.json",
+      "shacl_url": "https://codeberg.org/CE-RISE-models/re-indicators-specification/raw/tag/pages-v0.0.3/generated/shacl.ttl"
     }
   ]
 }
@@ -39,7 +39,9 @@ Rules:
 
 - `model + version` must be unique in the catalog.
 - Each entry must declare at least one artifact reference.
+- Artifact references must be direct runtime-fetchable file URLs.
 - If HTTPS enforcement is enabled, catalog/artifact URLs must be HTTPS.
+- Artifact hosts must be permitted by `REGISTRY_ALLOWED_HOSTS`.
 
 ## Onboarding Flow
 

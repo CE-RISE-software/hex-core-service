@@ -469,9 +469,9 @@ Catalog entries should provide explicit artifact references per `(model, version
 {
   "model": "re-indicators-specification",
   "version": "0.0.3",
-  "route_url": "https://codeberg.org/CE-RISE-models/re-indicators-specification/src/tag/pages-v0.0.3/generated/route.json",
-  "schema_url": "https://codeberg.org/CE-RISE-models/re-indicators-specification/src/tag/pages-v0.0.3/generated/schema.json",
-  "shacl_url": "https://codeberg.org/CE-RISE-models/re-indicators-specification/src/tag/pages-v0.0.3/generated/shacl.ttl"
+  "route_url": "https://codeberg.org/CE-RISE-models/re-indicators-specification/raw/tag/pages-v0.0.3/generated/route.json",
+  "schema_url": "https://codeberg.org/CE-RISE-models/re-indicators-specification/raw/tag/pages-v0.0.3/generated/schema.json",
+  "shacl_url": "https://codeberg.org/CE-RISE-models/re-indicators-specification/raw/tag/pages-v0.0.3/generated/shacl.ttl"
 }
 ```
 
@@ -480,6 +480,12 @@ The running service reads catalog entries from one of:
 - `REGISTRY_CATALOG_JSON`
 - `REGISTRY_CATALOG_FILE`
 - `REGISTRY_CATALOG_URL`
+
+Requirements for each artifact reference:
+
+- it must be a directly fetchable runtime URL to the artifact file
+- it must pass `REGISTRY_ALLOWED_HOSTS`
+- it must pass `REGISTRY_REQUIRE_HTTPS` when HTTPS enforcement is enabled
 
 ### Artifact Reference Defaults
 

@@ -223,13 +223,18 @@ Use a single catalog artifact as the registry source of truth:
     {
       "model": "re-indicators-specification",
       "version": "0.0.3",
-      "route_url": "https://codeberg.org/CE-RISE-models/re-indicators-specification/src/tag/pages-v0.0.3/generated/route.json",
-      "schema_url": "https://codeberg.org/CE-RISE-models/re-indicators-specification/src/tag/pages-v0.0.3/generated/schema.json",
-      "shacl_url": "https://codeberg.org/CE-RISE-models/re-indicators-specification/src/tag/pages-v0.0.3/generated/shacl.ttl"
+      "route_url": "https://codeberg.org/CE-RISE-models/re-indicators-specification/raw/tag/pages-v0.0.3/generated/route.json",
+      "schema_url": "https://codeberg.org/CE-RISE-models/re-indicators-specification/raw/tag/pages-v0.0.3/generated/schema.json",
+      "shacl_url": "https://codeberg.org/CE-RISE-models/re-indicators-specification/raw/tag/pages-v0.0.3/generated/shacl.ttl"
     }
   ]
 }
 ```
+
+Each artifact reference in the catalog must be a directly fetchable runtime URL, and must satisfy:
+
+- `REGISTRY_ALLOWED_HOSTS`
+- `REGISTRY_REQUIRE_HTTPS`
 
 Recommended flow:
 
