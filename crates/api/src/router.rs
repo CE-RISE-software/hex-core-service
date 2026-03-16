@@ -24,29 +24,29 @@ pub fn build(state: Arc<AppState>, authn: AuthProviderHandle) -> Router {
     let protected = Router::new()
         // ── Model operations ──────────────────────────────────────────────────
         .route(
-            "/models/{model}/versions/{version_op}",
+            "/models/:model/versions/:version_op",
             post(operations::dispatch),
         )
         .route(
-            "/models/{model}/versions/{version}/{operation}",
+            "/models/:model/versions/:version/:operation",
             post(operations::dispatch_slash),
         )
         // ── Public introspection ──────────────────────────────────────────────
         .route("/models", get(models::list))
         .route(
-            "/models/{model}/versions/{version}/schema",
+            "/models/:model/versions/:version/schema",
             get(models::artifact_schema),
         )
         .route(
-            "/models/{model}/versions/{version}/shacl",
+            "/models/:model/versions/:version/shacl",
             get(models::artifact_shacl),
         )
         .route(
-            "/models/{model}/versions/{version}/owl",
+            "/models/:model/versions/:version/owl",
             get(models::artifact_owl),
         )
         .route(
-            "/models/{model}/versions/{version}/route",
+            "/models/:model/versions/:version/route",
             get(models::artifact_route),
         )
         // ── OpenAPI self-description ──────────────────────────────────────────
@@ -101,15 +101,21 @@ async fn track_and_log_metrics(
 
 #[cfg(test)]
 mod tests {
+    use crate::auth::{NoAuthConfig, NoAuthProvider};
     use crate::metrics::ApiMetrics;
     use crate::AppState;
     use axum::{
+        body::Body,
         extract::{Extension, Path, State},
-        http::HeaderMap,
+        http::{HeaderMap, Request, StatusCode},
         routing::{get, post},
         Router,
     };
-    use hex_core::domain::auth::SecurityContext;
+    use hex_core::domain::{
+        auth::SecurityContext,
+        error::RegistryError,
+        model::{ArtifactSet, ModelDescriptor, ModelId, ModelVersion, RefreshSummary},
+    };
     use hex_core::{
         ports::{
             inbound::{record::RecordUseCase, validate::ValidateUseCase},
@@ -126,10 +132,39 @@ mod tests {
     use hex_validator_owl::OwlValidator;
     use hex_validator_shacl::ShaclValidator;
     use std::{path::Path as FsPath, sync::Arc};
+    use tower::util::ServiceExt;
     use wiremock::{
         matchers::{method, path},
         Mock, MockServer, ResponseTemplate,
     };
+
+    struct RegistryStub {
+        artifacts: ArtifactSet,
+        models: Vec<ModelDescriptor>,
+    }
+
+    #[async_trait::async_trait]
+    impl ArtifactRegistryPort for RegistryStub {
+        async fn resolve(
+            &self,
+            _model: &ModelId,
+            _version: &ModelVersion,
+        ) -> Result<ArtifactSet, RegistryError> {
+            Ok(self.artifacts.clone())
+        }
+
+        async fn list_models(&self) -> Result<Vec<ModelDescriptor>, RegistryError> {
+            Ok(self.models.clone())
+        }
+
+        async fn refresh(&self) -> Result<RefreshSummary, RegistryError> {
+            Ok(RefreshSummary {
+                refreshed_at: "2026-03-16T00:00:00Z".into(),
+                models_found: self.models.len(),
+                errors: vec![],
+            })
+        }
+    }
 
     async fn spawn_http(app: Router) -> (String, tokio::task::JoinHandle<()>) {
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
@@ -164,6 +199,120 @@ mod tests {
             tenant: None,
             raw_token: Some("test-token".into()),
         }
+    }
+
+    fn build_stubbed_app() -> Router {
+        let registry: Arc<dyn ArtifactRegistryPort> = Arc::new(RegistryStub {
+            artifacts: ArtifactSet {
+                route: Some(serde_json::json!({"op":"create"})),
+                schema: Some("{\"type\":\"object\"}".into()),
+                shacl: Some("@prefix sh: <http://www.w3.org/ns/shacl#> .".into()),
+                owl: Some("@prefix owl: <http://www.w3.org/2002/07/owl#> .".into()),
+                openapi: Some("{\"openapi\":\"3.1.0\"}".into()),
+            },
+            models: vec![ModelDescriptor {
+                id: ModelId("dp-record-metadata".into()),
+                version: ModelVersion("0.0.2".into()),
+            }],
+        });
+
+        let validators: Vec<Arc<dyn ValidatorPort>> = vec![];
+        let validate_use_case: Arc<dyn ValidateUseCase> = Arc::new(ValidateUseCaseImpl::new(
+            registry.clone(),
+            validators.clone(),
+        ));
+        let store: Arc<dyn RecordStorePort> = Arc::new(MemoryRecordStore::new());
+        let record_use_case: Arc<dyn RecordUseCase> = Arc::new(RecordUseCaseImpl {
+            registry: registry.clone(),
+            validators,
+            store,
+        });
+
+        let state = Arc::new(AppState {
+            registry,
+            validate_use_case,
+            record_use_case,
+            started_at: std::time::Instant::now(),
+            metrics_enabled: false,
+            metrics: Arc::new(ApiMetrics::new()),
+        });
+
+        let authn = Arc::new(NoAuthProvider::new(NoAuthConfig {
+            allow_insecure_none: true,
+            subject: "tester".into(),
+            roles: vec![],
+            scopes: vec![],
+            tenant: None,
+        }));
+
+        super::build(state, authn)
+    }
+
+    #[tokio::test]
+    async fn model_version_routes_are_served_by_router() {
+        let response = build_stubbed_app()
+            .oneshot(
+                Request::builder()
+                    .uri("/models/dp-record-metadata/versions/0.0.2/schema")
+                    .body(Body::empty())
+                    .expect("build schema request"),
+            )
+            .await
+            .expect("schema response");
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let response = build_stubbed_app()
+            .oneshot(
+                Request::builder()
+                    .uri("/models/dp-record-metadata/versions/0.0.2/route")
+                    .body(Body::empty())
+                    .expect("build route request"),
+            )
+            .await
+            .expect("route response");
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let response = build_stubbed_app()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/models/dp-record-metadata/versions/0.0.2:validate")
+                    .header("content-type", "application/json")
+                    .body(Body::from(r#"{"payload":{"ok":true}}"#))
+                    .expect("build validate request"),
+            )
+            .await
+            .expect("validate response");
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let response = build_stubbed_app()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/models/dp-record-metadata/versions/0.0.2:create")
+                    .header("content-type", "application/json")
+                    .header("idempotency-key", "idem-1")
+                    .body(Body::from(r#"{"payload":{"ok":true}}"#))
+                    .expect("build create request"),
+            )
+            .await
+            .expect("create response");
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let response = build_stubbed_app()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/models/dp-record-metadata/versions/0.0.2:query")
+                    .header("content-type", "application/json")
+                    .body(Body::from(
+                        r#"{"filter":{"where":[],"limit":10,"offset":0}}"#,
+                    ))
+                    .expect("build query request"),
+            )
+            .await
+            .expect("query response");
+        assert_eq!(response.status(), StatusCode::OK);
     }
 
     #[tokio::test]

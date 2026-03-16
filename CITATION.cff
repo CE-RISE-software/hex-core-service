@@ -1,10 +1,10 @@
 cff-version: 1.2.0
 title: CE-RISE Hex Core Service
 message: >-
-  v0.0.6 - Migrate to explicit-artifact catalog to support different model artifact publication locations and formats.
+  v0.0.7 - Fixed model-version route.
 type: software
 doi: 10.5281/zenodo.18952629
-version: 0.0.6
+version: 0.0.7
 authors:
   - given-names: Riccardo
     family-names: Boero

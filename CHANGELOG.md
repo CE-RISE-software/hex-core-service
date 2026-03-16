@@ -2,6 +2,16 @@
 
 All notable changes to `hex-core-service` are documented in this file.
 
+## [0.0.7] - 03-16-2026
+
+### Fixed
+- router.rs](/home/riccardo/code/CE-RISE-software/hex-core-service/crates/api/src/router.rs) was using brace-style path params in the actual Axum router:
+  - `"/models/{model}/versions/{version}/schema"`
+- every parameterized model-version route was treated as a literal path and never matched
+- result was framework `404`
+- fixed by switching to colon-style path params: `"/models/:model/versions/:version/schema"`
+
+
 ## [0.0.6] - 03-16-2026
 
 ### Changed
