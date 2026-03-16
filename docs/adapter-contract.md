@@ -461,11 +461,18 @@ impl ArtifactSet {
 }
 ```
 
-### Catalog Entry URL Format
+### Catalog Entry Format
 
-Catalog entries must provide a concrete artifact base URL per `(model, version)`, for example:
-```
-https://codeberg.org/CE-RISE-models/{model}/src/tag/pages-v{version}/generated/
+Catalog entries should provide explicit artifact references per `(model, version)`, for example:
+
+```json
+{
+  "model": "re-indicators-specification",
+  "version": "0.0.3",
+  "route_url": "https://codeberg.org/CE-RISE-models/re-indicators-specification/src/tag/pages-v0.0.3/generated/route.json",
+  "schema_url": "https://codeberg.org/CE-RISE-models/re-indicators-specification/src/tag/pages-v0.0.3/generated/schema.json",
+  "shacl_url": "https://codeberg.org/CE-RISE-models/re-indicators-specification/src/tag/pages-v0.0.3/generated/shacl.ttl"
+}
 ```
 
 The running service reads catalog entries from one of:
@@ -474,23 +481,21 @@ The running service reads catalog entries from one of:
 - `REGISTRY_CATALOG_FILE`
 - `REGISTRY_CATALOG_URL`
 
-### Artifact Filename Defaults
+### Artifact Reference Defaults
 
 | Artifact | Filename | Required |
 |----------|----------|----------|
-| Route definition | `route.json` | **Yes** |
-| JSON Schema | `schema.json` | No |
-| SHACL shapes | `shacl.ttl` | No |
-| OWL ontology | `owl.ttl` | No |
-| OpenAPI spec | `openapi.json` | No |
-
-Override via `REGISTRY_ARTIFACT_MAP_<KEY>` environment variables.
+| Route definition | `route_url` | Only for routable operations |
+| JSON Schema | `schema_url` | No |
+| SHACL shapes | `shacl_url` | No |
+| OWL ontology | `owl_url` | No |
+| OpenAPI spec | `openapi_url` | No |
 
 ### Resolution Behavior
 
-1. On startup, fetch `route.json` for each model
-2. Silently skip missing optional artifacts
-3. Mark model as non-routable if `route.json` is absent
+1. On startup or refresh, fetch each explicitly declared artifact reference
+2. Silently skip undeclared or `404` optional artifacts
+3. Mark model as non-routable if no route artifact is present
 4. Cache artifacts only if `REGISTRY_CACHE_ENABLED=true` (default: disabled)
 5. Refresh index via `POST /admin/registry/refresh`
 

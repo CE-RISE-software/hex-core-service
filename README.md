@@ -59,7 +59,7 @@ docker run --rm -p 8080:8080 \
 | Variable | Required | Description |
 |---|---|---|
 | `REGISTRY_MODE` | Yes | Registry backend (`catalog`) |
-| `REGISTRY_CATALOG_URL` | Yes (unless file/json alternatives are used) | URL of catalog JSON with model/version/base_url entries |
+| `REGISTRY_CATALOG_URL` | Yes (unless file/json alternatives are used) | URL of catalog JSON with explicit artifact references per model/version entry (`route_url`, `schema_url`, `shacl_url`, `owl_url`, `openapi_url`) |
 | `IO_ADAPTER_ID` | Yes | IO adapter implementation (`memory` or configured HTTP adapter) |
 | `AUTH_MODE` | Yes | Authentication mode (`jwt_jwks`, `forward_auth`, `none`) |
 | `AUTH_JWKS_URL` | Yes for `jwt_jwks` | JWKS endpoint URL |

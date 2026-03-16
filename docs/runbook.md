@@ -129,7 +129,7 @@ The artifact registry can be manually refreshed to discover new models or update
 
 **Process:**
 1. The registry re-loads the configured catalog source (`REGISTRY_CATALOG_URL` or `REGISTRY_CATALOG_FILE`).
-2. The registry resolves artifacts (`route.json` required) for each catalog entry.
+2. The registry resolves the explicitly declared artifact references for each catalog entry.
 3. A new index is built in memory.
 4. The index is atomically swapped (no downtime).
 5. A refresh summary is returned.
@@ -443,7 +443,7 @@ groups:
 - Catalog URL/file path is wrong or unreachable
 - `REGISTRY_ALLOWED_HOSTS` blocks the registry domain
 - `REGISTRY_REQUIRE_HTTPS=true` but registry uses HTTP
-- Missing `route.json` in all model repositories
+- No routable artifact references are published for the affected models
 
 ### Validation Always Fails
 

@@ -17,11 +17,6 @@ See `.env.example` for a ready-to-copy template.
 | `REGISTRY_REQUIRE_HTTPS` | Yes | — | `true`/`false`; startup fails if missing or invalid |
 | `REGISTRY_CACHE_ENABLED` | No | `false` | Enable artifact caching |
 | `REGISTRY_CACHE_TTL_SECS` | No | `300` | Cache TTL in seconds |
-| `REGISTRY_ARTIFACT_MAP_ROUTE` | No | `route.json` | Filename override for route artifact |
-| `REGISTRY_ARTIFACT_MAP_SCHEMA` | No | `schema.json` | Filename override for JSON Schema artifact |
-| `REGISTRY_ARTIFACT_MAP_SHACL` | No | `shacl.ttl` | Filename override for SHACL artifact |
-| `REGISTRY_ARTIFACT_MAP_OWL` | No | `owl.ttl` | Filename override for OWL artifact |
-| `REGISTRY_ARTIFACT_MAP_OPENAPI` | No | `openapi.json` | Filename override for OpenAPI artifact |
 
 ### Catalog source selection
 
@@ -42,7 +37,9 @@ Accepted JSON shapes:
   {
     "model": "re-indicators-specification",
     "version": "0.0.3",
-    "base_url": "https://codeberg.org/CE-RISE-models/re-indicators-specification/src/tag/pages-v0.0.3/generated/"
+    "route_url": "https://codeberg.org/CE-RISE-models/re-indicators-specification/src/tag/pages-v0.0.3/generated/route.json",
+    "schema_url": "https://codeberg.org/CE-RISE-models/re-indicators-specification/src/tag/pages-v0.0.3/generated/schema.json",
+    "shacl_url": "https://codeberg.org/CE-RISE-models/re-indicators-specification/src/tag/pages-v0.0.3/generated/shacl.ttl"
   }
 ]
 ```
@@ -55,7 +52,8 @@ or
     {
       "model": "re-indicators-specification",
       "version": "0.0.3",
-      "base_url": "https://codeberg.org/CE-RISE-models/re-indicators-specification/src/tag/pages-v0.0.3/generated/"
+      "route_url": "https://codeberg.org/CE-RISE-models/re-indicators-specification/src/tag/pages-v0.0.3/generated/route.json",
+      "schema_url": "https://codeberg.org/CE-RISE-models/re-indicators-specification/src/tag/pages-v0.0.3/generated/schema.json"
     }
   ]
 }
@@ -65,8 +63,10 @@ Rules:
 
 - Multiple versions for the same model are allowed.
 - Duplicate `(model, version)` entries are rejected.
-- `base_url` (or `url`) must point to the artifact folder containing `route.json`.
-- If `model` or `version` is omitted, the registry attempts to infer them from CE-RISE Codeberg URL patterns.
+- Catalog entries must declare explicit per-artifact URLs using `route_url`, `schema_url`, `shacl_url`, `owl_url`, and `openapi_url` as needed.
+- At least one artifact reference must be declared in each entry.
+- `route_url` is only required for routable model operations; validation-only entries may publish only `schema_url`, `shacl_url`, or `owl_url`.
+- If `model` or `version` is omitted, the registry attempts to infer them from declared artifact URLs when they match known CE-RISE Codeberg patterns.
 
 For SHACL behavior and artifact expectations (`shacl.ttl`), see [SHACL Validation](shacl-validation.md).
 

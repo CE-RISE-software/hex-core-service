@@ -13,21 +13,27 @@ use hex_core::{
 use tokio::sync::RwLock;
 use tracing::warn;
 
-use crate::{index::RegistryIndex, url_registry::UrlArtifactRegistry};
+use crate::{
+    index::RegistryIndex,
+    url_registry::{ArtifactUrlSet, UrlArtifactRegistry},
+};
 
 #[derive(Debug, Clone)]
 pub struct CatalogEntry {
     pub model: ModelId,
     pub version: ModelVersion,
-    pub base_url: String,
+    pub artifact_urls: ArtifactUrlSet,
 }
 
 #[derive(Debug, serde::Deserialize)]
 struct CatalogEntryRaw {
     model: Option<String>,
     version: Option<String>,
-    base_url: Option<String>,
-    url: Option<String>,
+    route_url: Option<String>,
+    schema_url: Option<String>,
+    shacl_url: Option<String>,
+    owl_url: Option<String>,
+    openapi_url: Option<String>,
 }
 
 #[derive(Debug, serde::Deserialize)]
@@ -39,18 +45,32 @@ enum CatalogDocument {
 
 impl CatalogEntryRaw {
     fn into_entry(self) -> Result<CatalogEntry, RegistryError> {
-        let base_url = self
-            .base_url
-            .or(self.url)
-            .ok_or_else(|| RegistryError::Internal("catalog entry missing base_url/url".into()))?;
+        let artifact_urls = ArtifactUrlSet {
+            route_url: self.route_url,
+            schema_url: self.schema_url,
+            shacl_url: self.shacl_url,
+            owl_url: self.owl_url,
+            openapi_url: self.openapi_url,
+        };
 
-        let parsed = parse_model_version_from_url(&base_url);
+        if artifact_urls.route_url.is_none()
+            && artifact_urls.schema_url.is_none()
+            && artifact_urls.shacl_url.is_none()
+            && artifact_urls.owl_url.is_none()
+            && artifact_urls.openapi_url.is_none()
+        {
+            return Err(RegistryError::Internal(
+                "catalog entry must declare at least one explicit artifact URL".into(),
+            ));
+        }
+
+        let parsed = inferred_model_version(&artifact_urls);
         let model = match (self.model, parsed.as_ref().map(|(m, _)| m.clone())) {
             (Some(m), _) => m,
             (None, Some(m)) => m,
             (None, None) => {
                 return Err(RegistryError::Internal(format!(
-                    "catalog entry missing model and cannot infer from URL: {base_url}"
+                    "catalog entry missing model and cannot infer it from declared artifact URLs"
                 )));
             }
         };
@@ -59,7 +79,7 @@ impl CatalogEntryRaw {
             (None, Some(v)) => v,
             (None, None) => {
                 return Err(RegistryError::Internal(format!(
-                    "catalog entry missing version and cannot infer from URL: {base_url}"
+                    "catalog entry missing version and cannot infer it from declared artifact URLs"
                 )));
             }
         };
@@ -67,7 +87,7 @@ impl CatalogEntryRaw {
         Ok(CatalogEntry {
             model: ModelId(model),
             version: ModelVersion(version),
-            base_url,
+            artifact_urls,
         })
     }
 }
@@ -227,11 +247,12 @@ impl ArtifactRegistryPort for CatalogArtifactRegistry {
         let mut errors = Vec::new();
 
         for item in &catalog_entries {
-            match self
+            let result = self
                 .resolver
-                .resolve_artifacts_from_base_url(&item.model, &item.version, &item.base_url)
-                .await
-            {
+                .resolve_artifacts_from_urls(&item.artifact_urls)
+                .await;
+
+            match result {
                 Ok(artifacts) => {
                     entries.insert((item.model.clone(), item.version.clone()), artifacts);
                 }
@@ -239,14 +260,11 @@ impl ArtifactRegistryPort for CatalogArtifactRegistry {
                     warn!(
                         model = %item.model,
                         version = %item.version,
-                        base_url = %item.base_url,
+                        route_url = ?item.artifact_urls.route_url,
                         error = %e,
                         "failed to resolve catalog entry"
                     );
-                    errors.push(format!(
-                        "{}@{}: {} ({})",
-                        item.model.0, item.version.0, e, item.base_url
-                    ));
+                    errors.push(format!("{}@{}: {}", item.model.0, item.version.0, e));
                 }
             }
         }
@@ -307,6 +325,37 @@ fn parse_model_version_from_url(url: &str) -> Option<(String, String)> {
     }
     let version = version_tag.strip_prefix("pages-v")?.to_string();
     Some((model, version))
+}
+
+fn inferred_model_version(artifact_urls: &ArtifactUrlSet) -> Option<(String, String)> {
+    artifact_urls
+        .route_url
+        .as_deref()
+        .and_then(parse_model_version_from_url)
+        .or_else(|| {
+            artifact_urls
+                .schema_url
+                .as_deref()
+                .and_then(parse_model_version_from_url)
+        })
+        .or_else(|| {
+            artifact_urls
+                .shacl_url
+                .as_deref()
+                .and_then(parse_model_version_from_url)
+        })
+        .or_else(|| {
+            artifact_urls
+                .owl_url
+                .as_deref()
+                .and_then(parse_model_version_from_url)
+        })
+        .or_else(|| {
+            artifact_urls
+                .openapi_url
+                .as_deref()
+                .and_then(parse_model_version_from_url)
+        })
 }
 
 #[cfg(test)]
@@ -387,12 +436,12 @@ mod tests {
     {{
       "model": "re-indicators-specification",
       "version": "0.0.3",
-      "base_url": "{}/CE-RISE-models/re-indicators-specification/src/tag/pages-v0.0.3/generated/"
+      "route_url": "{}/CE-RISE-models/re-indicators-specification/src/tag/pages-v0.0.3/generated/route.json"
     }},
     {{
       "model": "dp-record-metadata",
       "version": "1.1.0",
-      "base_url": "{}/CE-RISE-models/dp-record-metadata/src/tag/pages-v1.1.0/generated/"
+      "route_url": "{}/CE-RISE-models/dp-record-metadata/src/tag/pages-v1.1.0/generated/route.json"
     }}
   ]
 }}"#,
@@ -426,12 +475,12 @@ mod tests {
     {
       "model": "re-indicators-specification",
       "version": "0.0.3",
-      "base_url": "https://codeberg.org/CE-RISE-models/re-indicators-specification/src/tag/pages-v0.0.3/generated/"
+      "route_url": "https://codeberg.org/CE-RISE-models/re-indicators-specification/src/tag/pages-v0.0.3/generated/route.json"
     },
     {
       "model": "re-indicators-specification",
       "version": "0.0.3",
-      "base_url": "https://codeberg.org/CE-RISE-models/re-indicators-specification/src/tag/pages-v0.0.3/generated/"
+      "route_url": "https://codeberg.org/CE-RISE-models/re-indicators-specification/src/tag/pages-v0.0.3/generated/route.json"
     }
   ]
 }"#;
@@ -480,12 +529,12 @@ mod tests {
     {{
       "model": "re-indicators-specification",
       "version": "0.0.2",
-      "base_url": "{}/CE-RISE-models/re-indicators-specification/src/tag/pages-v0.0.2/generated/"
+      "route_url": "{}/CE-RISE-models/re-indicators-specification/src/tag/pages-v0.0.2/generated/route.json"
     }},
     {{
       "model": "re-indicators-specification",
       "version": "0.0.3",
-      "base_url": "{}/CE-RISE-models/re-indicators-specification/src/tag/pages-v0.0.3/generated/"
+      "route_url": "{}/CE-RISE-models/re-indicators-specification/src/tag/pages-v0.0.3/generated/route.json"
     }}
   ]
 }}"#,
@@ -508,6 +557,52 @@ mod tests {
         assert_eq!(models[0].version.0, "0.0.2");
         assert_eq!(models[1].id.0, "re-indicators-specification");
         assert_eq!(models[1].version.0, "0.0.3");
+    }
+
+    #[tokio::test]
+    async fn explicit_schema_only_entry_is_indexed_without_route() {
+        let server = MockServer::start().await;
+        let schema = ResponseTemplate::new(200).set_body_string(r#"{"type":"object"}"#);
+
+        Mock::given(method("GET"))
+            .and(path(
+                "/external-models/schema-only/src/tag/pages-v1.2.3/generated/schema.json",
+            ))
+            .respond_with(schema)
+            .mount(&server)
+            .await;
+
+        let catalog = format!(
+            r#"{{
+  "models": [
+    {{
+      "model": "schema-only",
+      "version": "1.2.3",
+      "schema_url": "{}/external-models/schema-only/src/tag/pages-v1.2.3/generated/schema.json"
+    }}
+  ]
+}}"#,
+            server.uri()
+        );
+
+        let registry = CatalogArtifactRegistry::from_json_catalog(&catalog, vec![], false)
+            .await
+            .expect("schema-only entry should initialize");
+
+        let models = registry.list_models().await.expect("list should work");
+        assert_eq!(models.len(), 1);
+        assert_eq!(models[0].id.0, "schema-only");
+        assert_eq!(models[0].version.0, "1.2.3");
+
+        let artifacts = registry
+            .resolve(
+                &hex_core::domain::model::ModelId("schema-only".into()),
+                &hex_core::domain::model::ModelVersion("1.2.3".into()),
+            )
+            .await
+            .expect("resolve should work");
+        assert!(artifacts.route.is_none());
+        assert_eq!(artifacts.schema.as_deref(), Some(r#"{"type":"object"}"#));
     }
 
     #[tokio::test]
@@ -553,7 +648,7 @@ mod tests {
         }
 
         let catalog_a = format!(
-            r#"[{{"model":"model-a","version":"1.0.0","base_url":"{}/CE-RISE-models/model-a/src/tag/pages-v1.0.0/generated/"}}]"#,
+            r#"[{{"model":"model-a","version":"1.0.0","route_url":"{}/CE-RISE-models/model-a/src/tag/pages-v1.0.0/generated/route.json"}}]"#,
             server.uri()
         );
         let registry = CatalogArtifactRegistry::from_json_catalog(&catalog_a, vec![], false)
@@ -566,7 +661,7 @@ mod tests {
         assert_eq!(models[0].version.0, "1.0.0");
 
         let catalog_b = format!(
-            r#"[{{"model":"model-b","version":"2.0.0","base_url":"{}/CE-RISE-models/model-b/src/tag/pages-v2.0.0/generated/"}}]"#,
+            r#"[{{"model":"model-b","version":"2.0.0","route_url":"{}/CE-RISE-models/model-b/src/tag/pages-v2.0.0/generated/route.json"}}]"#,
             server.uri()
         );
         registry

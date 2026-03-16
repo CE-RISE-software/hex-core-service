@@ -199,7 +199,7 @@ mod tests {
     {{
       "model": "model-a",
       "version": "1.0.0",
-      "base_url": "{}/CE-RISE-models/model-a/src/tag/pages-v1.0.0/generated/"
+      "route_url": "{}/CE-RISE-models/model-a/src/tag/pages-v1.0.0/generated/route.json"
     }}
   ]
 }}"#,
@@ -272,7 +272,7 @@ mod tests {
     {{
       "model": "model-b",
       "version": "2.0.0",
-      "base_url": "{}/CE-RISE-models/model-b/src/tag/pages-v2.0.0/generated/"
+      "route_url": "{}/CE-RISE-models/model-b/src/tag/pages-v2.0.0/generated/route.json"
     }}
   ]
 }}"#,
@@ -348,10 +348,12 @@ mod tests {
     {{
       "model": "{model}",
       "version": "{version}",
-      "base_url": "{}/CE-RISE-models/{model}/src/tag/pages-v{version}/generated/"
+      "route_url": "{}/CE-RISE-models/{model}/src/tag/pages-v{version}/generated/route.json",
+      "shacl_url": "{}/CE-RISE-models/{model}/src/tag/pages-v{version}/generated/shacl.ttl"
     }}
   ]
 }}"#,
+            server.uri(),
             server.uri()
         );
         let registry = CatalogArtifactRegistry::from_json_catalog(&catalog, vec![], false)
@@ -458,10 +460,12 @@ ex:Ontology a owl:Ontology .
     {{
       "model": "{model}",
       "version": "{version}",
-      "base_url": "{}/CE-RISE-models/{model}/src/tag/pages-v{version}/generated/"
+      "route_url": "{}/CE-RISE-models/{model}/src/tag/pages-v{version}/generated/route.json",
+      "owl_url": "{}/CE-RISE-models/{model}/src/tag/pages-v{version}/generated/owl.ttl"
     }}
   ]
 }}"#,
+            server.uri(),
             server.uri()
         );
         let registry = CatalogArtifactRegistry::from_json_catalog(&catalog, vec![], false)

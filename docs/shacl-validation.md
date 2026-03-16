@@ -50,13 +50,12 @@ Violations are returned as `severity = error`, with a JSON path and message.
 To enable SHACL validation for a model version:
 
 - Include a catalog entry for that `(model, version)`.
-- Ensure `base_url` points to an artifact folder containing:
-  - required: `route.json`
-  - optional but needed for SHACL: `shacl.ttl`
+- Ensure the catalog entry declares a `shacl_url`.
+- `route_url` is only needed if the same model must also support routable operations.
 
-Example CE-RISE artifact base URL:
+Example explicit SHACL artifact URL:
 
-`https://codeberg.org/CE-RISE-models/<model>/src/tag/pages-v<version>/generated/`
+`https://codeberg.org/CE-RISE-models/<model>/src/tag/pages-v<version>/generated/shacl.ttl`
 
 ## API Result Shape
 

@@ -2,6 +2,15 @@
 
 All notable changes to `hex-core-service` are documented in this file.
 
+## [0.0.6] - 03-16-2026
+
+### Changed
+- Replaced legacy catalog `base_url` entries with explicit per-artifact references (`route_url`, `schema_url`, `shacl_url`, `owl_url`, `openapi_url`).
+- Removed the assumption that all model artifacts must live under one inferred base directory.
+- Updated registry loading so models can be declared from heterogeneous artifact publication locations.
+- Clarified that `route_url` is only required for routable operations, while validation-only model entries may publish only the artifacts they need.
+- Updated README, configuration, deployment, onboarding, adapter, SHACL, and runbook docs to the new catalog contract.
+
 ## [0.0.5] - 03-11-2026
 
 ### Changed

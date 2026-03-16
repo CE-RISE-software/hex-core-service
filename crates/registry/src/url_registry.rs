@@ -3,6 +3,15 @@ use hex_core::domain::{
     model::{ArtifactSet, ModelId, ModelVersion},
 };
 
+#[derive(Debug, Clone, Default)]
+pub struct ArtifactUrlSet {
+    pub route_url: Option<String>,
+    pub schema_url: Option<String>,
+    pub shacl_url: Option<String>,
+    pub owl_url: Option<String>,
+    pub openapi_url: Option<String>,
+}
+
 /// Resolves model artifacts from a remote URL registry using a configurable
 /// URL template of the form:
 ///   https://codeberg.org/CE-RISE-models/{model}/src/tag/pages-v{version}/generated/
@@ -101,23 +110,19 @@ impl UrlArtifactRegistry {
         Ok(())
     }
 
-    /// Fetch a single artifact file from the resolved base URL.
+    /// Fetch a single artifact file from an explicit URL.
     /// Returns `None` if the server responds with 404.
     /// Returns `Err` for all other non-success responses.
-    async fn fetch_optional(
-        &self,
-        base_url: &str,
-        filename: &str,
-    ) -> Result<Option<String>, RegistryError> {
-        let url = format!("{}{}", base_url, filename);
+    async fn fetch_optional_url(&self, url: &str) -> Result<Option<String>, RegistryError> {
+        self.validate_url(url)?;
 
         let response =
             self.client
-                .get(&url)
+                .get(url)
                 .send()
                 .await
                 .map_err(|e| RegistryError::FetchFailed {
-                    url: url.clone(),
+                    url: url.to_string(),
                     reason: e.to_string(),
                 })?;
 
@@ -127,7 +132,7 @@ impl UrlArtifactRegistry {
 
         if !response.status().is_success() {
             return Err(RegistryError::FetchFailed {
-                url,
+                url: url.to_string(),
                 reason: format!("HTTP {}", response.status()),
             });
         }
@@ -136,15 +141,14 @@ impl UrlArtifactRegistry {
             .text()
             .await
             .map_err(|e| RegistryError::FetchFailed {
-                url: url.clone(),
+                url: url.to_string(),
                 reason: e.to_string(),
             })?;
 
         Ok(Some(text))
     }
 
-    /// Resolve all artifacts for a (model, version) pair.
-    /// `route.json` is required; all others are optional.
+    /// Resolve all artifacts for a (model, version) pair using inferred filenames.
     pub async fn resolve_artifacts(
         &self,
         model: &ModelId,
@@ -159,42 +163,60 @@ impl UrlArtifactRegistry {
     /// Used by catalog-backed registries that already provide explicit base URLs.
     pub async fn resolve_artifacts_from_base_url(
         &self,
-        model: &ModelId,
-        version: &ModelVersion,
+        _model: &ModelId,
+        _version: &ModelVersion,
         base_url: &str,
     ) -> Result<ArtifactSet, RegistryError> {
         let base_url = self.normalize_and_validate_base_url(base_url.to_string())?;
+        self.resolve_artifacts_from_urls(&ArtifactUrlSet {
+            route_url: Some(format!("{}{}", base_url, self.artifact_map.route)),
+            schema_url: Some(format!("{}{}", base_url, self.artifact_map.schema)),
+            shacl_url: Some(format!("{}{}", base_url, self.artifact_map.shacl)),
+            owl_url: Some(format!("{}{}", base_url, self.artifact_map.owl)),
+            openapi_url: Some(format!("{}{}", base_url, self.artifact_map.openapi)),
+        })
+        .await
+    }
 
-        // route.json is required
-        let route_text = self
-            .fetch_optional(&base_url, &self.artifact_map.route)
-            .await?
-            .ok_or_else(|| RegistryError::ModelNotFound {
-                model: model.0.clone(),
-                version: version.0.clone(),
-            })?;
+    /// Resolve artifacts from explicit per-artifact URLs. Missing URLs and `404`
+    /// responses both resolve to absent artifacts instead of hard failure.
+    pub async fn resolve_artifacts_from_urls(
+        &self,
+        urls: &ArtifactUrlSet,
+    ) -> Result<ArtifactSet, RegistryError> {
+        let route =
+            match urls.route_url.as_deref() {
+                Some(url) => match self.fetch_optional_url(url).await? {
+                    Some(text) => Some(serde_json::from_str(&text).map_err(|e| {
+                        RegistryError::FetchFailed {
+                            url: url.to_string(),
+                            reason: format!("invalid JSON: {e}"),
+                        }
+                    })?),
+                    None => None,
+                },
+                None => None,
+            };
 
-        let route = serde_json::from_str(&route_text).map_err(|e| RegistryError::FetchFailed {
-            url: format!("{}{}", base_url, self.artifact_map.route),
-            reason: format!("invalid JSON: {e}"),
-        })?;
-
-        // Optional artifacts
-        let schema = self
-            .fetch_optional(&base_url, &self.artifact_map.schema)
-            .await?;
-        let shacl = self
-            .fetch_optional(&base_url, &self.artifact_map.shacl)
-            .await?;
-        let owl = self
-            .fetch_optional(&base_url, &self.artifact_map.owl)
-            .await?;
-        let openapi = self
-            .fetch_optional(&base_url, &self.artifact_map.openapi)
-            .await?;
+        let schema = match urls.schema_url.as_deref() {
+            Some(url) => self.fetch_optional_url(url).await?,
+            None => None,
+        };
+        let shacl = match urls.shacl_url.as_deref() {
+            Some(url) => self.fetch_optional_url(url).await?,
+            None => None,
+        };
+        let owl = match urls.owl_url.as_deref() {
+            Some(url) => self.fetch_optional_url(url).await?,
+            None => None,
+        };
+        let openapi = match urls.openapi_url.as_deref() {
+            Some(url) => self.fetch_optional_url(url).await?,
+            None => None,
+        };
 
         Ok(ArtifactSet {
-            route: Some(route),
+            route,
             schema,
             shacl,
             owl,
