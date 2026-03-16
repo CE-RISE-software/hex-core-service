@@ -4,7 +4,7 @@ message: >-
   v0.0.6 - Migrate to explicit-artifact catalog to support different model artifact publication locations and formats.
 type: software
 doi: 10.5281/zenodo.18952629
-version: 0.0.5
+version: 0.0.6
 authors:
   - given-names: Riccardo
     family-names: Boero
