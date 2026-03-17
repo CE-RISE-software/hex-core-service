@@ -2,6 +2,12 @@
 
 All notable changes to `hex-core-service` are documented in this file.
 
+## [0.0.8] - 03-17-2026
+
+### Fixed
+- Release of CLI workflow.
+- Removed unecessary version field from CITATION.cff.
+
 ## [0.0.7] - 03-16-2026
 
 ### Fixed

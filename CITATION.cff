@@ -1,10 +1,9 @@
 cff-version: 1.2.0
 title: CE-RISE Hex Core Service
 message: >-
-  v0.0.7 - Fixed model-version route.
+  v0.0.8 - Fixed cLI release pipeline.
 type: software
 doi: 10.5281/zenodo.18952629
-version: 0.0.7
 authors:
   - given-names: Riccardo
     family-names: Boero
