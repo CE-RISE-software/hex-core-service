@@ -1,0 +1,35 @@
+{
+    "title": "CE-RISE Hex Core Service",
+    "description": "Rust-based hexagonal core service for model-agnostic validation and IO orchestration of versioned digital-passport-like records.",
+    "license": "EUPL-1.2",
+    "upload_type": "software",
+    "creators": [
+        {
+            "name": "Boero, Riccardo",
+            "affiliation": "NILU",
+            "orcid": "0000-0002-7468-9096"
+        }
+    ],
+    "keywords": [
+        "CE-RISE",
+        "Hexagonal Architecture",
+        "Digital Product Passport",
+        "API",
+        "Rust"
+    ],
+    "notes": "v0.0.8 - Fixed CLI release pipeline.",
+    "communities": [{ "identifier": "ce-rise" }, { "identifier": "impact" }],
+    "grants": [{ "id": "101092281" }],
+    "related_identifiers": [
+        {
+            "identifier": "https://codeberg.org/CE-RISE-software/hex-core-service",
+            "relation": "isSupplementTo",
+            "resource_type": "software"
+        },
+        {
+            "identifier": "https://ce-rise-software.codeberg.page/hex-core-service/",
+            "relation": "isDocumentedBy",
+            "resource_type": "publication-technicalnote"
+        }
+    ]
+}
