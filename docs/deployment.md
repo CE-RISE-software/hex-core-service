@@ -493,7 +493,7 @@ Before tagging a release:
 
 Current agreed policy:
 
-- CLI binaries are distributed through release artifacts only.
+- CLI binaries are attached directly to each tagged release on the Codeberg release page.
 - No Homebrew/Scoop/crates.io publication is required for normal releases.
 - Users should download the OS/CPU-specific archive listed in [CLI Binary Availability](#cli-binary-availability).
 

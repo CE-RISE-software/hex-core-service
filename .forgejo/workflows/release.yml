@@ -6,8 +6,74 @@ on:
             - "v*.*.*"
 
 jobs:
+    main-release:
+        runs-on: codeberg-tiny
+        outputs:
+            version: ${{ steps.tag.outputs.VERSION }}
+            release_id: ${{ steps.ensure_release.outputs.RELEASE_ID }}
+        steps:
+            - name: Extract version tag
+              id: tag
+              run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+            - name: Create or reuse repository release
+              id: ensure_release
+              env:
+                  VERSION: ${{ steps.tag.outputs.VERSION }}
+                  CI_PUSH_TOKEN: ${{ secrets.CI_PUSH_TOKEN }}
+              run: |
+                  set -euo pipefail
+                  API="${GITHUB_SERVER_URL}/api/v1/repos/${GITHUB_REPOSITORY}"
+                  AUTH_HEADER="Authorization: token ${CI_PUSH_TOKEN}"
+
+                  STATUS="$(curl -sS -o /tmp/release-check.json -w '%{http_code}' \
+                    -H "${AUTH_HEADER}" \
+                    "${API}/releases/tags/${VERSION}")"
+
+                  if [ "${STATUS}" = "200" ]; then
+                    RELEASE_ID="$(python3 - <<'PY'
+                  import json
+                  from pathlib import Path
+                  print(json.loads(Path('/tmp/release-check.json').read_text())['id'])
+                  PY
+                    )"
+                    echo "RELEASE_ID=${RELEASE_ID}" >> "$GITHUB_OUTPUT"
+                    exit 0
+                  fi
+
+                  if [ "${STATUS}" != "404" ]; then
+                    echo "Unexpected response while checking release: HTTP ${STATUS}"
+                    cat /tmp/release-check.json || true
+                    exit 1
+                  fi
+
+                  PRERELEASE=false
+                  if [[ "${VERSION}" == *-* ]]; then PRERELEASE=true; fi
+
+                  curl -fsS -X POST "${API}/releases" \
+                    -H "${AUTH_HEADER}" \
+                    -H "Content-Type: application/json" \
+                    -d "{
+                      \"tag_name\": \"${VERSION}\",
+                      \"name\": \"Release ${VERSION}\",
+                      \"body\": \"Automated release for ${VERSION}.\",
+                      \"draft\": false,
+                      \"prerelease\": ${PRERELEASE}
+                    }" \
+                    -o /tmp/release-create.json
+
+                  RELEASE_ID="$(python3 - <<'PY'
+                  import json
+                  from pathlib import Path
+                  print(json.loads(Path('/tmp/release-create.json').read_text())['id'])
+                  PY
+                  )"
+                  echo "RELEASE_ID=${RELEASE_ID}" >> "$GITHUB_OUTPUT"
+
     cli-binaries:
         runs-on: codeberg-medium
+        needs:
+            - main-release
         strategy:
             fail-fast: false
             matrix:
@@ -69,7 +135,7 @@ jobs:
 
             - name: Extract version tag
               id: tag
-              run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+              run: echo "VERSION=${{ needs.main-release.outputs.version }}" >> $GITHUB_OUTPUT
 
             - name: Build hex-cli
               run: cargo zigbuild --release -p hex-cli --target ${{ matrix.target }}
@@ -85,12 +151,47 @@ jobs:
                   cp "target/${{ matrix.target }}/release/${BIN_NAME}" "dist/${BIN_NAME}"
                   (cd dist && tar -czf "${DIST_NAME}.tar.gz" "${BIN_NAME}")
 
-            - name: Upload CLI archive
-              uses: https://github.com/actions/upload-artifact@v3
-              with:
-                  name: hex-cli-${{ steps.tag.outputs.VERSION }}-${{ matrix.archive_suffix }}
-                  path: |
-                      dist/*.tar.gz
+            - name: Attach CLI archive to Codeberg release
+              env:
+                  RELEASE_ID: ${{ needs.main-release.outputs.release_id }}
+                  CI_PUSH_TOKEN: ${{ secrets.CI_PUSH_TOKEN }}
+                  ASSET_NAME: hex-cli-${{ steps.tag.outputs.VERSION }}-${{ matrix.archive_suffix }}.tar.gz
+              run: |
+                  set -euo pipefail
+                  API="${GITHUB_SERVER_URL}/api/v1/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}"
+                  AUTH_HEADER="Authorization: token ${CI_PUSH_TOKEN}"
+
+                  STATUS="$(curl -sS -o /tmp/release-assets.json -w '%{http_code}' \
+                    -H "${AUTH_HEADER}" \
+                    "${API}/assets")"
+                  if [ "${STATUS}" != "200" ]; then
+                    echo "Could not list release assets: HTTP ${STATUS}"
+                    cat /tmp/release-assets.json || true
+                    exit 1
+                  fi
+
+                  EXISTING_ID="$(python3 - <<'PY'
+                  import json
+                  import os
+                  from pathlib import Path
+                  name = os.environ["ASSET_NAME"]
+                  for asset in json.loads(Path('/tmp/release-assets.json').read_text()):
+                      if asset.get('name') == name:
+                          print(asset['id'])
+                          break
+                  PY
+                  )"
+
+                  if [ -n "${EXISTING_ID}" ]; then
+                    curl -fsS -X DELETE \
+                      -H "${AUTH_HEADER}" \
+                      "${API}/assets/${EXISTING_ID}"
+                  fi
+
+                  curl -fsS -X POST \
+                    -H "${AUTH_HEADER}" \
+                    -F "attachment=@dist/${ASSET_NAME}" \
+                    "${API}/assets?name=${ASSET_NAME}"
 
     docker-build-and-push:
         runs-on: codeberg-medium

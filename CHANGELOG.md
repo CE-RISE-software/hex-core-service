@@ -2,6 +2,11 @@
 
 All notable changes to `hex-core-service` are documented in this file.
 
+## [0.0.9] [Unreleased]
+
+### Changed
+- CLI binaries are now attached directly to Codeberg release pages as release assets instead of being available only as workflow artifacts.
+
 ## [0.0.8] - 03-17-2026
 
 ### Fixed
