@@ -60,23 +60,6 @@ pub async fn artifact_owl(
     text_artifact(&state, &model, &version, |a| a.owl.clone()).await
 }
 
-/// GET /models/{model}/versions/{version}/route
-pub async fn artifact_route(
-    State(state): State<Arc<AppState>>,
-    Path((model, version)): Path<(String, String)>,
-) -> Response {
-    let model_id = ModelId(model);
-    let model_version = ModelVersion(version);
-
-    match state.registry.resolve(&model_id, &model_version).await {
-        Ok(artifacts) => match artifacts.route {
-            Some(route) => Json(route).into_response(),
-            None => not_found("route artifact not present for this model version"),
-        },
-        Err(e) => registry_error(e),
-    }
-}
-
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 async fn text_artifact<F>(

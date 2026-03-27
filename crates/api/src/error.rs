@@ -73,15 +73,6 @@ impl IntoResponse for ApiError {
                     },
                 ),
 
-                CoreError::NotRoutable => (
-                    StatusCode::UNPROCESSABLE_ENTITY,
-                    ErrorBody {
-                        code: "NOT_ROUTABLE".into(),
-                        message: "Model has no route definition and cannot be dispatched".into(),
-                        details: None,
-                    },
-                ),
-
                 CoreError::ValidationFailed(report) => (
                     StatusCode::UNPROCESSABLE_ENTITY,
                     ErrorBody {

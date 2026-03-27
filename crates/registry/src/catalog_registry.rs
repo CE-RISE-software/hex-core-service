@@ -29,7 +29,6 @@ pub struct CatalogEntry {
 struct CatalogEntryRaw {
     model: Option<String>,
     version: Option<String>,
-    route_url: Option<String>,
     schema_url: Option<String>,
     shacl_url: Option<String>,
     owl_url: Option<String>,
@@ -46,15 +45,13 @@ enum CatalogDocument {
 impl CatalogEntryRaw {
     fn into_entry(self) -> Result<CatalogEntry, RegistryError> {
         let artifact_urls = ArtifactUrlSet {
-            route_url: self.route_url,
             schema_url: self.schema_url,
             shacl_url: self.shacl_url,
             owl_url: self.owl_url,
             openapi_url: self.openapi_url,
         };
 
-        if artifact_urls.route_url.is_none()
-            && artifact_urls.schema_url.is_none()
+        if artifact_urls.schema_url.is_none()
             && artifact_urls.shacl_url.is_none()
             && artifact_urls.owl_url.is_none()
             && artifact_urls.openapi_url.is_none()
@@ -260,7 +257,6 @@ impl ArtifactRegistryPort for CatalogArtifactRegistry {
                     warn!(
                         model = %item.model,
                         version = %item.version,
-                        route_url = ?item.artifact_urls.route_url,
                         error = %e,
                         "failed to resolve catalog entry"
                     );
@@ -329,15 +325,9 @@ fn parse_model_version_from_url(url: &str) -> Option<(String, String)> {
 
 fn inferred_model_version(artifact_urls: &ArtifactUrlSet) -> Option<(String, String)> {
     artifact_urls
-        .route_url
+        .schema_url
         .as_deref()
         .and_then(parse_model_version_from_url)
-        .or_else(|| {
-            artifact_urls
-                .schema_url
-                .as_deref()
-                .and_then(parse_model_version_from_url)
-        })
         .or_else(|| {
             artifact_urls
                 .shacl_url
@@ -391,18 +381,18 @@ mod tests {
     #[tokio::test]
     async fn catalog_registry_lists_models_from_explicit_urls() {
         let server = MockServer::start().await;
-        let route = ResponseTemplate::new(200).set_body_string(r#"{"op":"create"}"#);
+        let schema = ResponseTemplate::new(200).set_body_string(r#"{"type":"object"}"#);
         let not_found = ResponseTemplate::new(404);
 
         // Model A v0.0.3
         Mock::given(method("GET"))
             .and(path(
-                "/CE-RISE-models/re-indicators-specification/src/tag/pages-v0.0.3/generated/route.json",
+                "/CE-RISE-models/re-indicators-specification/src/tag/pages-v0.0.3/generated/schema.json",
             ))
-            .respond_with(route.clone())
+            .respond_with(schema.clone())
             .mount(&server)
             .await;
-        for filename in ["schema.json", "shacl.ttl", "owl.ttl", "openapi.json"] {
+        for filename in ["shacl.ttl", "owl.ttl", "openapi.json"] {
             Mock::given(method("GET"))
                 .and(path(format!(
                     "/CE-RISE-models/re-indicators-specification/src/tag/pages-v0.0.3/generated/{filename}"
@@ -415,12 +405,12 @@ mod tests {
         // Model B v1.1.0
         Mock::given(method("GET"))
             .and(path(
-                "/CE-RISE-models/dp-record-metadata/src/tag/pages-v1.1.0/generated/route.json",
+                "/CE-RISE-models/dp-record-metadata/src/tag/pages-v1.1.0/generated/schema.json",
             ))
-            .respond_with(route)
+            .respond_with(schema)
             .mount(&server)
             .await;
-        for filename in ["schema.json", "shacl.ttl", "owl.ttl", "openapi.json"] {
+        for filename in ["shacl.ttl", "owl.ttl", "openapi.json"] {
             Mock::given(method("GET"))
                 .and(path(format!(
                     "/CE-RISE-models/dp-record-metadata/src/tag/pages-v1.1.0/generated/{filename}"
@@ -436,12 +426,12 @@ mod tests {
     {{
       "model": "re-indicators-specification",
       "version": "0.0.3",
-      "route_url": "{}/CE-RISE-models/re-indicators-specification/src/tag/pages-v0.0.3/generated/route.json"
+      "schema_url": "{}/CE-RISE-models/re-indicators-specification/src/tag/pages-v0.0.3/generated/schema.json"
     }},
     {{
       "model": "dp-record-metadata",
       "version": "1.1.0",
-      "route_url": "{}/CE-RISE-models/dp-record-metadata/src/tag/pages-v1.1.0/generated/route.json"
+      "schema_url": "{}/CE-RISE-models/dp-record-metadata/src/tag/pages-v1.1.0/generated/schema.json"
     }}
   ]
 }}"#,
@@ -475,12 +465,12 @@ mod tests {
     {
       "model": "re-indicators-specification",
       "version": "0.0.3",
-      "route_url": "https://codeberg.org/CE-RISE-models/re-indicators-specification/src/tag/pages-v0.0.3/generated/route.json"
+      "schema_url": "https://codeberg.org/CE-RISE-models/re-indicators-specification/src/tag/pages-v0.0.3/generated/schema.json"
     },
     {
       "model": "re-indicators-specification",
       "version": "0.0.3",
-      "route_url": "https://codeberg.org/CE-RISE-models/re-indicators-specification/src/tag/pages-v0.0.3/generated/route.json"
+      "schema_url": "https://codeberg.org/CE-RISE-models/re-indicators-specification/src/tag/pages-v0.0.3/generated/schema.json"
     }
   ]
 }"#;
@@ -501,18 +491,18 @@ mod tests {
     #[tokio::test]
     async fn same_model_with_different_versions_is_accepted() {
         let server = MockServer::start().await;
-        let route = ResponseTemplate::new(200).set_body_string(r#"{"op":"create"}"#);
+        let schema = ResponseTemplate::new(200).set_body_string(r#"{"type":"object"}"#);
         let not_found = ResponseTemplate::new(404);
 
         for version in ["0.0.2", "0.0.3"] {
             Mock::given(method("GET"))
                 .and(path(format!(
-                    "/CE-RISE-models/re-indicators-specification/src/tag/pages-v{version}/generated/route.json"
+                    "/CE-RISE-models/re-indicators-specification/src/tag/pages-v{version}/generated/schema.json"
                 )))
-                .respond_with(route.clone())
+                .respond_with(schema.clone())
                 .mount(&server)
                 .await;
-            for filename in ["schema.json", "shacl.ttl", "owl.ttl", "openapi.json"] {
+            for filename in ["shacl.ttl", "owl.ttl", "openapi.json"] {
                 Mock::given(method("GET"))
                     .and(path(format!(
                         "/CE-RISE-models/re-indicators-specification/src/tag/pages-v{version}/generated/{filename}"
@@ -529,12 +519,12 @@ mod tests {
     {{
       "model": "re-indicators-specification",
       "version": "0.0.2",
-      "route_url": "{}/CE-RISE-models/re-indicators-specification/src/tag/pages-v0.0.2/generated/route.json"
+      "schema_url": "{}/CE-RISE-models/re-indicators-specification/src/tag/pages-v0.0.2/generated/schema.json"
     }},
     {{
       "model": "re-indicators-specification",
       "version": "0.0.3",
-      "route_url": "{}/CE-RISE-models/re-indicators-specification/src/tag/pages-v0.0.3/generated/route.json"
+      "schema_url": "{}/CE-RISE-models/re-indicators-specification/src/tag/pages-v0.0.3/generated/schema.json"
     }}
   ]
 }}"#,
@@ -601,25 +591,24 @@ mod tests {
             )
             .await
             .expect("resolve should work");
-        assert!(artifacts.route.is_none());
         assert_eq!(artifacts.schema.as_deref(), Some(r#"{"type":"object"}"#));
     }
 
     #[tokio::test]
     async fn refresh_reloads_inline_catalog_after_replacement() {
         let server = MockServer::start().await;
-        let route = ResponseTemplate::new(200).set_body_string(r#"{"op":"create"}"#);
+        let schema = ResponseTemplate::new(200).set_body_string(r#"{"type":"object"}"#);
         let not_found = ResponseTemplate::new(404);
 
         // First catalog entry model-a@1.0.0
         Mock::given(method("GET"))
             .and(path(
-                "/CE-RISE-models/model-a/src/tag/pages-v1.0.0/generated/route.json",
+                "/CE-RISE-models/model-a/src/tag/pages-v1.0.0/generated/schema.json",
             ))
-            .respond_with(route.clone())
+            .respond_with(schema.clone())
             .mount(&server)
             .await;
-        for filename in ["schema.json", "shacl.ttl", "owl.ttl", "openapi.json"] {
+        for filename in ["shacl.ttl", "owl.ttl", "openapi.json"] {
             Mock::given(method("GET"))
                 .and(path(format!(
                     "/CE-RISE-models/model-a/src/tag/pages-v1.0.0/generated/{filename}"
@@ -632,12 +621,12 @@ mod tests {
         // Second catalog entry model-b@2.0.0
         Mock::given(method("GET"))
             .and(path(
-                "/CE-RISE-models/model-b/src/tag/pages-v2.0.0/generated/route.json",
+                "/CE-RISE-models/model-b/src/tag/pages-v2.0.0/generated/schema.json",
             ))
-            .respond_with(route)
+            .respond_with(schema)
             .mount(&server)
             .await;
-        for filename in ["schema.json", "shacl.ttl", "owl.ttl", "openapi.json"] {
+        for filename in ["shacl.ttl", "owl.ttl", "openapi.json"] {
             Mock::given(method("GET"))
                 .and(path(format!(
                     "/CE-RISE-models/model-b/src/tag/pages-v2.0.0/generated/{filename}"
@@ -648,7 +637,7 @@ mod tests {
         }
 
         let catalog_a = format!(
-            r#"[{{"model":"model-a","version":"1.0.0","route_url":"{}/CE-RISE-models/model-a/src/tag/pages-v1.0.0/generated/route.json"}}]"#,
+            r#"[{{"model":"model-a","version":"1.0.0","schema_url":"{}/CE-RISE-models/model-a/src/tag/pages-v1.0.0/generated/schema.json"}}]"#,
             server.uri()
         );
         let registry = CatalogArtifactRegistry::from_json_catalog(&catalog_a, vec![], false)
@@ -661,7 +650,7 @@ mod tests {
         assert_eq!(models[0].version.0, "1.0.0");
 
         let catalog_b = format!(
-            r#"[{{"model":"model-b","version":"2.0.0","route_url":"{}/CE-RISE-models/model-b/src/tag/pages-v2.0.0/generated/route.json"}}]"#,
+            r#"[{{"model":"model-b","version":"2.0.0","schema_url":"{}/CE-RISE-models/model-b/src/tag/pages-v2.0.0/generated/schema.json"}}]"#,
             server.uri()
         );
         registry

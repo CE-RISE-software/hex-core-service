@@ -51,7 +51,6 @@ To enable SHACL validation for a model version:
 
 - Include a catalog entry for that `(model, version)`.
 - Ensure the catalog entry declares a `shacl_url`.
-- `route_url` is only needed if the same model must also support routable operations.
 
 Example explicit SHACL artifact URL:
 

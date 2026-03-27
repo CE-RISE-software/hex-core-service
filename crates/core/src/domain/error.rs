@@ -53,9 +53,6 @@ pub enum CoreError {
     #[error("model not found: {model} v{version}")]
     ModelNotFound { model: String, version: String },
 
-    #[error("model artifact is not routable: missing route definition")]
-    NotRoutable,
-
     #[error("validation failed")]
     ValidationFailed(ValidationReport),
 
@@ -116,11 +113,11 @@ mod tests {
         );
         assert_eq!(
             RegistryError::FetchFailed {
-                url: "https://example.test/route.json".into(),
+                url: "https://example.test/schema.json".into(),
                 reason: "HTTP 500".into()
             }
             .to_string(),
-            "artifact fetch failed for https://example.test/route.json: HTTP 500"
+            "artifact fetch failed for https://example.test/schema.json: HTTP 500"
         );
         assert_eq!(
             RegistryError::DisallowedHost {
@@ -171,10 +168,6 @@ mod tests {
             }
             .to_string(),
             "model not found: dp v1.0.0"
-        );
-        assert_eq!(
-            CoreError::NotRoutable.to_string(),
-            "model artifact is not routable: missing route definition"
         );
         assert_eq!(
             CoreError::IdempotencyConflict { key: "abc".into() }.to_string(),

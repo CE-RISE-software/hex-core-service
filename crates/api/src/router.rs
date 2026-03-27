@@ -45,10 +45,6 @@ pub fn build(state: Arc<AppState>, authn: AuthProviderHandle) -> Router {
             "/models/:model/versions/:version/owl",
             get(models::artifact_owl),
         )
-        .route(
-            "/models/:model/versions/:version/route",
-            get(models::artifact_route),
-        )
         // ── OpenAPI self-description ──────────────────────────────────────────
         .route("/openapi.json", get(models::openapi_spec))
         // ── Admin ─────────────────────────────────────────────────────────────
@@ -56,8 +52,6 @@ pub fn build(state: Arc<AppState>, authn: AuthProviderHandle) -> Router {
         .route("/admin/status", get(admin::status))
         .route("/admin/metrics", get(admin::metrics))
         .route("/admin/registry/refresh", post(admin::registry_refresh))
-        .route("/admin/config", get(admin::config))
-        .route("/admin/cache/clear", post(admin::cache_clear))
         .layer(middleware::from_fn_with_state(
             state.clone(),
             track_and_log_metrics,
@@ -204,7 +198,6 @@ mod tests {
     fn build_stubbed_app() -> Router {
         let registry: Arc<dyn ArtifactRegistryPort> = Arc::new(RegistryStub {
             artifacts: ArtifactSet {
-                route: Some(serde_json::json!({"op":"create"})),
                 schema: Some("{\"type\":\"object\"}".into()),
                 shacl: Some("@prefix sh: <http://www.w3.org/ns/shacl#> .".into()),
                 owl: Some("@prefix owl: <http://www.w3.org/2002/07/owl#> .".into()),
@@ -264,17 +257,6 @@ mod tests {
         let response = build_stubbed_app()
             .oneshot(
                 Request::builder()
-                    .uri("/models/dp-record-metadata/versions/0.0.2/route")
-                    .body(Body::empty())
-                    .expect("build route request"),
-            )
-            .await
-            .expect("route response");
-        assert_eq!(response.status(), StatusCode::OK);
-
-        let response = build_stubbed_app()
-            .oneshot(
-                Request::builder()
                     .method("POST")
                     .uri("/models/dp-record-metadata/versions/0.0.2:validate")
                     .header("content-type", "application/json")
@@ -318,19 +300,19 @@ mod tests {
     #[tokio::test]
     async fn admin_refresh_reloads_models_from_catalog_file() {
         let server = MockServer::start().await;
-        let route = ResponseTemplate::new(200).set_body_string(r#"{"op":"create"}"#);
+        let schema = ResponseTemplate::new(200).set_body_string(r#"{"type":"object"}"#);
         let not_found = ResponseTemplate::new(404);
 
         for (model, version) in [("model-a", "1.0.0"), ("model-b", "2.0.0")] {
             Mock::given(method("GET"))
                 .and(path(format!(
-                    "/CE-RISE-models/{model}/src/tag/pages-v{version}/generated/route.json"
+                    "/CE-RISE-models/{model}/src/tag/pages-v{version}/generated/schema.json"
                 )))
-                .respond_with(route.clone())
+                .respond_with(schema.clone())
                 .mount(&server)
                 .await;
 
-            for filename in ["schema.json", "shacl.ttl", "owl.ttl", "openapi.json"] {
+            for filename in ["shacl.ttl", "owl.ttl", "openapi.json"] {
                 Mock::given(method("GET"))
                     .and(path(format!(
                         "/CE-RISE-models/{model}/src/tag/pages-v{version}/generated/{filename}"
@@ -348,7 +330,7 @@ mod tests {
     {{
       "model": "model-a",
       "version": "1.0.0",
-      "route_url": "{}/CE-RISE-models/model-a/src/tag/pages-v1.0.0/generated/route.json"
+      "schema_url": "{}/CE-RISE-models/model-a/src/tag/pages-v1.0.0/generated/schema.json"
     }}
   ]
 }}"#,
@@ -421,7 +403,7 @@ mod tests {
     {{
       "model": "model-b",
       "version": "2.0.0",
-      "route_url": "{}/CE-RISE-models/model-b/src/tag/pages-v2.0.0/generated/route.json"
+      "schema_url": "{}/CE-RISE-models/model-b/src/tag/pages-v2.0.0/generated/schema.json"
     }}
   ]
 }}"#,
@@ -462,7 +444,6 @@ mod tests {
     #[tokio::test]
     async fn validate_endpoint_executes_shacl_with_real_dp_record_metadata_shapes() {
         let server = MockServer::start().await;
-        let route = ResponseTemplate::new(200).set_body_string(r#"{"op":"validate"}"#);
         let shacl = ResponseTemplate::new(200).set_body_string(include_str!(
             "../../validator-shacl/tests/fixtures/dp_record_metadata/shacl.ttl"
         ));
@@ -473,16 +454,10 @@ mod tests {
         let base = format!("/CE-RISE-models/{model}/src/tag/pages-v{version}/generated");
 
         Mock::given(method("GET"))
-            .and(path(format!("{base}/route.json")))
-            .respond_with(route)
-            .mount(&server)
-            .await;
-        Mock::given(method("GET"))
             .and(path(format!("{base}/shacl.ttl")))
             .respond_with(shacl)
             .mount(&server)
             .await;
-        // Keep JSON Schema absent so SHACL is the effective validator for this test.
         for filename in ["schema.json", "owl.ttl", "openapi.json"] {
             Mock::given(method("GET"))
                 .and(path(format!("{base}/{filename}")))
@@ -497,12 +472,10 @@ mod tests {
     {{
       "model": "{model}",
       "version": "{version}",
-      "route_url": "{}/CE-RISE-models/{model}/src/tag/pages-v{version}/generated/route.json",
       "shacl_url": "{}/CE-RISE-models/{model}/src/tag/pages-v{version}/generated/shacl.ttl"
     }}
   ]
 }}"#,
-            server.uri(),
             server.uri()
         );
         let registry = CatalogArtifactRegistry::from_json_catalog(&catalog, vec![], false)
@@ -571,7 +544,6 @@ mod tests {
     #[tokio::test]
     async fn validate_endpoint_executes_owl_when_owl_artifact_is_present() {
         let server = MockServer::start().await;
-        let route = ResponseTemplate::new(200).set_body_string(r#"{"op":"validate"}"#);
         let owl = ResponseTemplate::new(200).set_body_string(
             r#"
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
@@ -585,11 +557,6 @@ ex:Ontology a owl:Ontology .
         let version = "1.0.0";
         let base = format!("/CE-RISE-models/{model}/src/tag/pages-v{version}/generated");
 
-        Mock::given(method("GET"))
-            .and(path(format!("{base}/route.json")))
-            .respond_with(route)
-            .mount(&server)
-            .await;
         Mock::given(method("GET"))
             .and(path(format!("{base}/owl.ttl")))
             .respond_with(owl)
@@ -609,12 +576,10 @@ ex:Ontology a owl:Ontology .
     {{
       "model": "{model}",
       "version": "{version}",
-      "route_url": "{}/CE-RISE-models/{model}/src/tag/pages-v{version}/generated/route.json",
       "owl_url": "{}/CE-RISE-models/{model}/src/tag/pages-v{version}/generated/owl.ttl"
     }}
   ]
 }}"#,
-            server.uri(),
             server.uri()
         );
         let registry = CatalogArtifactRegistry::from_json_catalog(&catalog, vec![], false)

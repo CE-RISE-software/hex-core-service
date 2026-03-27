@@ -6,13 +6,10 @@ This page explains how to add a new model/version so it becomes available throug
 
 Each model version may publish any subset of these artifacts:
 
-- `route.json` (required only for routable create/query/dispatch operations)
 - `schema.json` (optional, for JSON Schema validation)
 - `shacl.ttl` (optional, for SHACL validation)
 - `owl.ttl` (optional, for OWL validation)
 - `openapi.json` (optional, for model-level API description)
-
-Validation-only models do not need `route.json`.
 
 ## Catalog Entry Format
 
@@ -27,7 +24,6 @@ Example `catalog.json`:
     {
       "model": "re-indicators-specification",
       "version": "0.0.3",
-      "route_url": "https://codeberg.org/CE-RISE-models/re-indicators-specification/raw/tag/pages-v0.0.3/generated/route.json",
       "schema_url": "https://codeberg.org/CE-RISE-models/re-indicators-specification/raw/tag/pages-v0.0.3/generated/schema.json",
       "shacl_url": "https://codeberg.org/CE-RISE-models/re-indicators-specification/raw/tag/pages-v0.0.3/generated/shacl.ttl"
     }
@@ -64,7 +60,6 @@ curl http://localhost:8080/models
 ## Verification Checklist
 
 - `GET /models` returns your model/version.
-- `GET /models/{model}/versions/{version}/route` returns `200` only for routable models.
 - Optional artifacts (`schema`, `shacl`, `owl`) return `200` if expected.
 - `POST /models/{model}/versions/{version}:validate` returns a valid response for a known-good payload.
 

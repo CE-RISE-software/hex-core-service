@@ -37,7 +37,6 @@ Accepted JSON shapes:
   {
     "model": "re-indicators-specification",
     "version": "0.0.3",
-    "route_url": "https://codeberg.org/CE-RISE-models/re-indicators-specification/raw/tag/pages-v0.0.3/generated/route.json",
     "schema_url": "https://codeberg.org/CE-RISE-models/re-indicators-specification/raw/tag/pages-v0.0.3/generated/schema.json",
     "shacl_url": "https://codeberg.org/CE-RISE-models/re-indicators-specification/raw/tag/pages-v0.0.3/generated/shacl.ttl"
   }
@@ -52,8 +51,7 @@ or
     {
       "model": "re-indicators-specification",
       "version": "0.0.3",
-      "route_url": "https://codeberg.org/CE-RISE-models/re-indicators-specification/raw/tag/pages-v0.0.3/generated/route.json",
-      "schema_url": "https://codeberg.org/CE-RISE-models/re-indicators-specification/raw/tag/pages-v0.0.3/generated/schema.json"
+        "schema_url": "https://codeberg.org/CE-RISE-models/re-indicators-specification/raw/tag/pages-v0.0.3/generated/schema.json"
     }
   ]
 }
@@ -63,10 +61,9 @@ Rules:
 
 - Multiple versions for the same model are allowed.
 - Duplicate `(model, version)` entries are rejected.
-- Catalog entries must declare explicit per-artifact URLs using `route_url`, `schema_url`, `shacl_url`, `owl_url`, and `openapi_url` as needed.
+- Catalog entries must declare explicit per-artifact URLs using `schema_url`, `shacl_url`, `owl_url`, and `openapi_url` as needed.
 - At least one artifact reference must be declared in each entry.
 - Artifact references must be directly fetchable runtime URLs to the artifact file itself, not repository HTML pages.
-- `route_url` is only required for routable model operations; validation-only entries may publish only `schema_url`, `shacl_url`, or `owl_url`.
 - If `model` or `version` is omitted, the registry attempts to infer them from declared artifact URLs when they match known CE-RISE Codeberg patterns.
 - Every artifact URL is validated against `REGISTRY_ALLOWED_HOSTS`.
 - Every artifact URL must satisfy `REGISTRY_REQUIRE_HTTPS` when enabled.

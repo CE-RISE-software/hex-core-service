@@ -5,7 +5,6 @@ use hex_core::domain::{
 
 #[derive(Debug, Clone, Default)]
 pub struct ArtifactUrlSet {
-    pub route_url: Option<String>,
     pub schema_url: Option<String>,
     pub shacl_url: Option<String>,
     pub owl_url: Option<String>,
@@ -28,7 +27,6 @@ pub struct UrlArtifactRegistry {
 /// Defaults are chosen for conservative URL parsing and validation.
 #[derive(Debug, Clone)]
 pub struct ArtifactFileMap {
-    pub route: String,
     pub schema: String,
     pub shacl: String,
     pub owl: String,
@@ -38,7 +36,6 @@ pub struct ArtifactFileMap {
 impl Default for ArtifactFileMap {
     fn default() -> Self {
         Self {
-            route: "route.json".into(),
             schema: "schema.json".into(),
             shacl: "shacl.ttl".into(),
             owl: "owl.ttl".into(),
@@ -169,7 +166,6 @@ impl UrlArtifactRegistry {
     ) -> Result<ArtifactSet, RegistryError> {
         let base_url = self.normalize_and_validate_base_url(base_url.to_string())?;
         self.resolve_artifacts_from_urls(&ArtifactUrlSet {
-            route_url: Some(format!("{}{}", base_url, self.artifact_map.route)),
             schema_url: Some(format!("{}{}", base_url, self.artifact_map.schema)),
             shacl_url: Some(format!("{}{}", base_url, self.artifact_map.shacl)),
             owl_url: Some(format!("{}{}", base_url, self.artifact_map.owl)),
@@ -184,20 +180,6 @@ impl UrlArtifactRegistry {
         &self,
         urls: &ArtifactUrlSet,
     ) -> Result<ArtifactSet, RegistryError> {
-        let route =
-            match urls.route_url.as_deref() {
-                Some(url) => match self.fetch_optional_url(url).await? {
-                    Some(text) => Some(serde_json::from_str(&text).map_err(|e| {
-                        RegistryError::FetchFailed {
-                            url: url.to_string(),
-                            reason: format!("invalid JSON: {e}"),
-                        }
-                    })?),
-                    None => None,
-                },
-                None => None,
-            };
-
         let schema = match urls.schema_url.as_deref() {
             Some(url) => self.fetch_optional_url(url).await?,
             None => None,
@@ -216,7 +198,6 @@ impl UrlArtifactRegistry {
         };
 
         Ok(ArtifactSet {
-            route,
             schema,
             shacl,
             owl,

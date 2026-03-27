@@ -37,15 +37,7 @@ impl ValidateUseCase for ValidateUseCaseImpl {
         version: &ModelVersion,
         payload: &serde_json::Value,
     ) -> Result<ValidationReport, CoreError> {
-        // 1. Resolve artifact set
         let artifacts = self.registry.resolve(model, version).await?;
-
-        // 2. Assert routable
-        if !artifacts.is_routable() {
-            return Err(CoreError::NotRoutable);
-        }
-
-        // 3. Run each validator; skip if its required artifact is absent
         let mut results = Vec::new();
         for validator in &self.validators {
             let result = validator
@@ -145,10 +137,7 @@ mod tests {
     async fn validate_returns_merged_report() {
         let usecase = ValidateUseCaseImpl::new(
             Arc::new(RegistryStub {
-                artifacts: ArtifactSet {
-                    route: Some(serde_json::json!({"op":"validate"})),
-                    ..Default::default()
-                },
+                artifacts: ArtifactSet::default(),
             }),
             vec![
                 Arc::new(ValidatorStub {
@@ -185,7 +174,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn validate_fails_when_not_routable() {
+    async fn validate_succeeds_without_dispatch_artifact() {
         let usecase = ValidateUseCaseImpl::new(
             Arc::new(RegistryStub {
                 artifacts: ArtifactSet::default(),
@@ -201,19 +190,15 @@ mod tests {
                 &serde_json::json!({"x":1}),
             )
             .await
-            .expect_err("must fail");
-
-        assert!(matches!(err, crate::domain::error::CoreError::NotRoutable));
+            .expect("validation without route should succeed");
+        assert!(err.results.is_empty());
     }
 
     #[tokio::test]
     async fn validate_propagates_validator_errors() {
         let usecase = ValidateUseCaseImpl::new(
             Arc::new(RegistryStub {
-                artifacts: ArtifactSet {
-                    route: Some(serde_json::json!({"op":"validate"})),
-                    ..Default::default()
-                },
+                artifacts: ArtifactSet::default(),
             }),
             vec![Arc::new(ValidatorStub {
                 result: None,

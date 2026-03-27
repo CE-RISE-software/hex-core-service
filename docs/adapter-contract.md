@@ -413,9 +413,8 @@ pub trait ArtifactRegistryPort: Send + Sync {
 
 **Requirements:**
 - Must fetch from the configured URL template
-- Must populate all available artifacts (`route`, `schema`, `shacl`, `owl`, `openapi`)
+- Must populate all available artifacts (`schema`, `shacl`, `owl`, `openapi`)
 - Missing optional artifacts should be `None`, not an error
-- Missing `route.json` should return `NotFound`
 
 #### `list_models`
 
@@ -447,17 +446,10 @@ pub trait ArtifactRegistryPort: Send + Sync {
 ```rust
 #[derive(Debug, Clone, Default)]
 pub struct ArtifactSet {
-    pub route:      Option<serde_json::Value>,  // required for dispatch
     pub schema:     Option<String>,             // JSON Schema text
     pub shacl:      Option<String>,             // SHACL Turtle text
     pub owl:        Option<String>,             // OWL Turtle text
     pub openapi:    Option<String>,             // OpenAPI YAML/JSON text
-}
-
-impl ArtifactSet {
-    pub fn is_routable(&self) -> bool {
-        self.route.is_some()
-    }
 }
 ```
 
@@ -469,7 +461,6 @@ Catalog entries should provide explicit artifact references per `(model, version
 {
   "model": "re-indicators-specification",
   "version": "0.0.3",
-  "route_url": "https://codeberg.org/CE-RISE-models/re-indicators-specification/raw/tag/pages-v0.0.3/generated/route.json",
   "schema_url": "https://codeberg.org/CE-RISE-models/re-indicators-specification/raw/tag/pages-v0.0.3/generated/schema.json",
   "shacl_url": "https://codeberg.org/CE-RISE-models/re-indicators-specification/raw/tag/pages-v0.0.3/generated/shacl.ttl"
 }
@@ -491,7 +482,6 @@ Requirements for each artifact reference:
 
 | Artifact | Filename | Required |
 |----------|----------|----------|
-| Route definition | `route_url` | Only for routable operations |
 | JSON Schema | `schema_url` | No |
 | SHACL shapes | `shacl_url` | No |
 | OWL ontology | `owl_url` | No |
@@ -501,9 +491,8 @@ Requirements for each artifact reference:
 
 1. On startup or refresh, fetch each explicitly declared artifact reference
 2. Silently skip undeclared or `404` optional artifacts
-3. Mark model as non-routable if no route artifact is present
-4. Cache artifacts only if `REGISTRY_CACHE_ENABLED=true` (default: disabled)
-5. Refresh index via `POST /admin/registry/refresh`
+3. Cache artifacts only if `REGISTRY_CACHE_ENABLED=true` (default: disabled)
+4. Refresh index via `POST /admin/registry/refresh`
 
 ### Implementation Example
 
@@ -529,7 +518,7 @@ All adapter implementations must include:
 
 1. **Unit tests** — Trait methods with mocked dependencies
 2. **Contract tests** — Known-good and known-bad inputs
-3. **Integration tests** — Against real or wiremocked external services
+3. **Integration tests** — Against real services or controlled test endpoints
 4. **Error handling tests** — Network failures, timeouts, malformed responses
 
 ### Example Test Structure
@@ -581,7 +570,7 @@ When implementing a new adapter:
 - [ ] Add unit tests with 100% coverage of trait methods
 - [ ] Add contract tests with known-good and known-bad inputs
 - [ ] Document adapter-specific configuration in adapter's `README.md`
-- [ ] Add integration tests (wiremock or testcontainers)
+- [ ] Add integration tests against controlled endpoints or containerized dependencies
 - [ ] Document error handling behavior
 - [ ] Add adapter to main `Cargo.toml` workspace
 - [ ] Update deployment guide with adapter setup instructions

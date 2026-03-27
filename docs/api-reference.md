@@ -178,7 +178,6 @@ Example response (`200`):
 GET /models/{model}/versions/{version}/schema
 GET /models/{model}/versions/{version}/shacl
 GET /models/{model}/versions/{version}/owl
-GET /models/{model}/versions/{version}/route
 ```
 
 Returns raw artifact content when available.
@@ -247,7 +246,6 @@ Common mappings:
 |---|---|
 | `MODEL_NOT_FOUND` | `404` |
 | `VALIDATION_FAILED` | `422` |
-| `NOT_ROUTABLE` | `422` |
 | `IDEMPOTENCY_CONFLICT` | `409` |
 | `STORE_ERROR` | `502` |
 | `REGISTRY_ERROR` | `502` |

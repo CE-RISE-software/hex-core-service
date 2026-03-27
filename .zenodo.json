@@ -17,7 +17,7 @@
         "API",
         "Rust"
     ],
-    "notes": "v0.0.8 - Fixed CLI release pipeline.",
+    "notes": "v0.0.9 - Fixed unsupported artifacts and CLI release pipeline.",
     "communities": [{ "identifier": "ce-rise" }, { "identifier": "impact" }],
     "grants": [{ "id": "101092281" }],
     "related_identifiers": [

@@ -2,10 +2,18 @@
 
 All notable changes to `hex-core-service` are documented in this file.
 
-## [0.0.9] [Unreleased]
+## [0.0.9] - 03-27-2026
 
 ### Changed
 - CLI binaries are now attached directly to Codeberg release pages as release assets instead of being available only as workflow artifacts.
+
+### Fixed
+- Removed the unsupported `route` artifact concept from the core, registry, API, and documentation.
+- Validation-only model entries now work without any extra dispatch artifact requirement.
+- Replaced ad hoc record ID generation with UUID v4 identifiers.
+- Implemented actual canonical query filtering in the in-memory adapter instead of returning all records.
+- Removed placeholder admin endpoints for config dump and cache clearing.
+- Cleaned stale documentation wording left behind by earlier scaffolding.
 
 ## [0.0.8] - 03-17-2026
 

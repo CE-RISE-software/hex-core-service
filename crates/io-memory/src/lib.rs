@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use serde_json::Value;
 use tokio::sync::RwLock;
 
 use hex_core::domain::{
@@ -75,11 +76,173 @@ impl RecordStorePort for MemoryRecordStore {
     async fn query(
         &self,
         _ctx: &SecurityContext,
-        _filter: serde_json::Value,
+        filter: serde_json::Value,
     ) -> Result<Vec<Record>, StoreError> {
-        // TODO: implement filter evaluation; returns all records for now.
         let store = self.store.read().await;
-        Ok(store.values().map(|e| e.record.clone()).collect())
+        let mut records: Vec<Record> = store.values().map(|e| e.record.clone()).collect();
+        apply_filter(&mut records, &filter)?;
+        Ok(records)
+    }
+}
+
+fn apply_filter(records: &mut Vec<Record>, filter: &Value) -> Result<(), StoreError> {
+    let Some(obj) = filter.as_object() else {
+        if filter.is_null() {
+            return Ok(());
+        }
+        return Err(StoreError::Internal(
+            "query filter must be a JSON object".into(),
+        ));
+    };
+
+    if let Some(where_clause) = obj.get("where") {
+        let conditions = where_clause
+            .as_array()
+            .ok_or_else(|| StoreError::Internal("query filter 'where' must be an array".into()))?;
+        records.retain(|record| {
+            conditions
+                .iter()
+                .all(|cond| condition_matches(record, cond).unwrap_or(false))
+        });
+    }
+
+    if let Some(sort_clause) = obj.get("sort") {
+        let sort_items = sort_clause
+            .as_array()
+            .ok_or_else(|| StoreError::Internal("query filter 'sort' must be an array".into()))?;
+        if let Some(first) = sort_items.first() {
+            let field = first
+                .get("field")
+                .and_then(Value::as_str)
+                .ok_or_else(|| StoreError::Internal("sort item missing string 'field'".into()))?;
+            let direction = first
+                .get("direction")
+                .and_then(Value::as_str)
+                .unwrap_or("asc");
+            let desc = matches!(direction, "desc" | "DESC");
+            records.sort_by(|a, b| {
+                compare_optional_json(field_value(a, field), field_value(b, field))
+            });
+            if desc {
+                records.reverse();
+            }
+        }
+    }
+
+    let offset = obj.get("offset").and_then(Value::as_u64).unwrap_or(0) as usize;
+    let limit = obj.get("limit").and_then(Value::as_u64).map(|n| n as usize);
+    let end = limit
+        .map(|n| offset.saturating_add(n))
+        .unwrap_or(records.len());
+    let sliced = records
+        .iter()
+        .skip(offset)
+        .take(end.saturating_sub(offset))
+        .cloned()
+        .collect();
+    *records = sliced;
+
+    Ok(())
+}
+
+fn condition_matches(record: &Record, condition: &Value) -> Result<bool, StoreError> {
+    let obj = condition
+        .as_object()
+        .ok_or_else(|| StoreError::Internal("query condition must be an object".into()))?;
+    let field = obj
+        .get("field")
+        .and_then(Value::as_str)
+        .ok_or_else(|| StoreError::Internal("query condition missing string 'field'".into()))?;
+    let op = obj
+        .get("op")
+        .and_then(Value::as_str)
+        .ok_or_else(|| StoreError::Internal("query condition missing string 'op'".into()))?;
+    let expected = obj.get("value").cloned().unwrap_or(Value::Null);
+    let actual = field_value(record, field);
+
+    match op {
+        "eq" => Ok(actual == Some(&expected)),
+        "ne" => Ok(actual != Some(&expected)),
+        "gt" => Ok(compare_json(actual, Some(&expected)).is_gt()),
+        "gte" => Ok(compare_json(actual, Some(&expected)).is_ge()),
+        "lt" => Ok(compare_json(actual, Some(&expected)).is_lt()),
+        "lte" => Ok(compare_json(actual, Some(&expected)).is_le()),
+        "in" => {
+            let items = expected.as_array().ok_or_else(|| {
+                StoreError::Internal("query condition 'in' expects array value".into())
+            })?;
+            Ok(actual.is_some_and(|a| items.iter().any(|item| item == a)))
+        }
+        "contains" => Ok(match (actual, &expected) {
+            (Some(Value::String(actual)), Value::String(needle)) => actual.contains(needle),
+            (Some(Value::Array(values)), needle) => values.iter().any(|v| v == needle),
+            _ => false,
+        }),
+        "exists" => {
+            let expected_bool = expected.as_bool().ok_or_else(|| {
+                StoreError::Internal("query condition 'exists' expects boolean value".into())
+            })?;
+            Ok(actual.is_some() == expected_bool)
+        }
+        other => Err(StoreError::Internal(format!(
+            "unsupported query operator '{other}'"
+        ))),
+    }
+}
+
+fn field_value<'a>(record: &'a Record, field: &str) -> Option<&'a Value> {
+    match field {
+        "id" => return None,
+        "model" => return None,
+        "version" => return None,
+        _ => {}
+    }
+
+    let payload_path = field.strip_prefix("payload.")?;
+    let root = &record.payload;
+    get_json_path(root, payload_path)
+}
+
+fn get_json_path<'a>(value: &'a Value, path: &str) -> Option<&'a Value> {
+    let mut current = value;
+    for segment in path.split('.') {
+        let mut rest = segment;
+        if let Some(bracket) = rest.find('[') {
+            let key = &rest[..bracket];
+            current = current.get(key)?;
+            rest = &rest[bracket..];
+        } else {
+            current = current.get(rest)?;
+            continue;
+        }
+
+        while let Some(stripped) = rest.strip_prefix('[') {
+            let close = stripped.find(']')?;
+            let index: usize = stripped[..close].parse().ok()?;
+            current = current.get(index)?;
+            rest = &stripped[close + 1..];
+        }
+    }
+    Some(current)
+}
+
+fn compare_optional_json(left: Option<&Value>, right: Option<&Value>) -> std::cmp::Ordering {
+    compare_json(left, right)
+}
+
+fn compare_json(left: Option<&Value>, right: Option<&Value>) -> std::cmp::Ordering {
+    use std::cmp::Ordering;
+    match (left, right) {
+        (None, None) => Ordering::Equal,
+        (None, Some(_)) => Ordering::Less,
+        (Some(_), None) => Ordering::Greater,
+        (Some(Value::String(a)), Some(Value::String(b))) => a.cmp(b),
+        (Some(Value::Number(a)), Some(Value::Number(b))) => a
+            .as_f64()
+            .partial_cmp(&b.as_f64())
+            .unwrap_or(Ordering::Equal),
+        (Some(Value::Bool(a)), Some(Value::Bool(b))) => a.cmp(b),
+        (Some(a), Some(b)) => a.to_string().cmp(&b.to_string()),
     }
 }
 
@@ -152,5 +315,55 @@ mod tests {
             .await
             .unwrap_err();
         assert!(matches!(err, StoreError::NotFound { .. }));
+    }
+
+    #[tokio::test]
+    async fn query_applies_where_limit_and_offset() {
+        let store = MemoryRecordStore::new();
+        let ctx = ctx();
+
+        let mut a = record("rec-1");
+        a.payload = serde_json::json!({"record_scope": "product", "score": 10});
+        let mut b = record("rec-2");
+        b.payload = serde_json::json!({"record_scope": "material", "score": 20});
+        let mut c = record("rec-3");
+        c.payload = serde_json::json!({"record_scope": "product", "score": 30});
+
+        store.write(&ctx, "idem-a", a).await.unwrap();
+        store.write(&ctx, "idem-b", b).await.unwrap();
+        store.write(&ctx, "idem-c", c).await.unwrap();
+
+        let records = store
+            .query(
+                &ctx,
+                serde_json::json!({
+                    "where": [
+                        { "field": "payload.record_scope", "op": "eq", "value": "product" }
+                    ],
+                    "sort": [
+                        { "field": "payload.score", "direction": "asc" }
+                    ],
+                    "limit": 1,
+                    "offset": 1
+                }),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(records.len(), 1);
+        assert_eq!(records[0].id.0, "rec-3");
+    }
+
+    #[tokio::test]
+    async fn query_rejects_invalid_filter_shape() {
+        let store = MemoryRecordStore::new();
+        let ctx = ctx();
+
+        let err = store
+            .query(&ctx, serde_json::json!({"where": {"field": "payload.a"}}))
+            .await
+            .unwrap_err();
+
+        assert!(matches!(err, StoreError::Internal(_)));
     }
 }

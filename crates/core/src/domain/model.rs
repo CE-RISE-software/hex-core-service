@@ -33,8 +33,6 @@ pub struct ModelDescriptor {
 /// Fields are `None` when the artifact is absent from the registry.
 #[derive(Debug, Clone, Default)]
 pub struct ArtifactSet {
-    /// Required for dispatch. Absence makes the model non-routable.
-    pub route: Option<serde_json::Value>,
     /// JSON Schema text.
     pub schema: Option<String>,
     /// SHACL shapes graph (Turtle).
@@ -43,13 +41,6 @@ pub struct ArtifactSet {
     pub owl: Option<String>,
     /// OpenAPI document (YAML or JSON text).
     pub openapi: Option<String>,
-}
-
-impl ArtifactSet {
-    /// Returns `true` only when a route definition is present.
-    pub fn is_routable(&self) -> bool {
-        self.route.is_some()
-    }
 }
 
 /// Returned by `ArtifactRegistryPort::refresh`.
@@ -104,18 +95,6 @@ mod tests {
 
         assert_eq!(decoded.id.0, "dp-record");
         assert_eq!(decoded.version.0, "2.0.0");
-    }
-
-    #[test]
-    fn artifact_set_is_routable_false_by_default() {
-        assert!(!ArtifactSet::default().is_routable());
-    }
-
-    #[test]
-    fn artifact_set_is_routable_true_when_route_present() {
-        let mut a = ArtifactSet::default();
-        a.route = Some(serde_json::json!({}));
-        assert!(a.is_routable());
     }
 
     #[test]

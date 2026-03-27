@@ -1,6 +1,6 @@
 use hex_core::domain::{error::ValidatorError, model::ArtifactSet, validation::ValidatorKind};
 use hex_core::ports::outbound::validator::ValidatorPort;
-use hex_validator_owl::{OwlValidator, OwlValidatorOptions};
+use hex_validator_owl::OwlValidator;
 
 const MINIMAL_OWL_TTL: &str = r#"
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
@@ -88,23 +88,4 @@ async fn validate_invalid_owl_artifact_maps_to_init_error() {
         .expect_err("invalid ontology must fail initialization");
 
     assert!(matches!(err, ValidatorError::Init(_)));
-}
-
-#[tokio::test]
-async fn validate_execution_failure_maps_to_execution_error() {
-    let validator = OwlValidator::with_options(OwlValidatorOptions {
-        simulate_execution_failure: true,
-    });
-    let artifacts = ArtifactSet {
-        owl: Some(MINIMAL_OWL_TTL.to_string()),
-        ..Default::default()
-    };
-    let payload = serde_json::json!({ "record_scope": "product" });
-
-    let err = validator
-        .validate(&artifacts, &payload)
-        .await
-        .expect_err("simulated runtime fault must map to execution error");
-
-    assert!(matches!(err, ValidatorError::Execution(_)));
 }

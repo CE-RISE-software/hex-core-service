@@ -173,19 +173,3 @@ pub async fn registry_refresh(State(state): State<Arc<AppState>>) -> impl IntoRe
         ),
     }
 }
-
-pub async fn config() -> impl IntoResponse {
-    // TODO: return a redacted config dump.
-    (
-        StatusCode::NOT_IMPLEMENTED,
-        Json(json!({ "error": "config endpoint not yet implemented" })),
-    )
-}
-
-pub async fn cache_clear() -> impl IntoResponse {
-    // TODO: clear artifact cache when caching is enabled.
-    (
-        StatusCode::NOT_IMPLEMENTED,
-        Json(json!({ "error": "cache clear not yet implemented" })),
-    )
-}

@@ -12,25 +12,11 @@ use hex_core::domain::{
 use hex_core::ports::outbound::validator::ValidatorPort;
 use time::{format_description::well_known::Rfc3339, OffsetDateTime};
 
-#[derive(Debug, Clone, Default)]
-pub struct OwlValidatorOptions {
-    /// Test hook used by contract tests to assert execution failure mapping.
-    pub simulate_execution_failure: bool,
-}
-
-pub struct OwlValidator {
-    options: OwlValidatorOptions,
-}
+pub struct OwlValidator;
 
 impl OwlValidator {
     pub fn new() -> Self {
-        Self {
-            options: OwlValidatorOptions::default(),
-        }
-    }
-
-    pub fn with_options(options: OwlValidatorOptions) -> Self {
-        Self { options }
+        Self
     }
 }
 
@@ -61,12 +47,6 @@ impl ValidatorPort for OwlValidator {
                 });
             }
         };
-
-        if self.options.simulate_execution_failure {
-            return Err(ValidatorError::Execution(
-                "simulated OWL validator execution failure".into(),
-            ));
-        }
 
         validate_ontology_text(owl)?;
 

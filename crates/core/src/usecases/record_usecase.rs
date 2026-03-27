@@ -31,10 +31,6 @@ impl RecordUseCase for RecordUseCaseImpl {
     ) -> Result<Record, CoreError> {
         let artifacts = self.registry.resolve(model, version).await?;
 
-        if !artifacts.is_routable() {
-            return Err(CoreError::NotRoutable);
-        }
-
         // Run all validators; collect results.
         let mut results = Vec::new();
         for v in &self.validators {
@@ -77,24 +73,14 @@ impl RecordUseCase for RecordUseCaseImpl {
         version: &ModelVersion,
         filter: serde_json::Value,
     ) -> Result<Vec<Record>, CoreError> {
-        let artifacts = self.registry.resolve(model, version).await?;
-
-        if !artifacts.is_routable() {
-            return Err(CoreError::NotRoutable);
-        }
+        let _artifacts = self.registry.resolve(model, version).await?;
 
         Ok(self.store.query(ctx, filter).await?)
     }
 }
 
 fn uuid() -> String {
-    use std::time::{SystemTime, UNIX_EPOCH};
-    // Minimal ID generation for scaffolding — replace with `uuid` crate in production.
-    let nanos = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .subsec_nanos();
-    format!("record-{nanos:08x}")
+    uuid::Uuid::new_v4().to_string()
 }
 
 #[cfg(test)]
@@ -234,10 +220,7 @@ mod tests {
         });
         let usecase = RecordUseCaseImpl {
             registry: Arc::new(RegistryStub {
-                artifacts: ArtifactSet {
-                    route: Some(serde_json::json!({"op":"create"})),
-                    ..Default::default()
-                },
+                artifacts: ArtifactSet::default(),
             }),
             validators: vec![Arc::new(ValidatorStub {
                 result: Some(pass_result()),
@@ -270,10 +253,7 @@ mod tests {
     async fn create_returns_validation_failed_when_validator_fails() {
         let usecase = RecordUseCaseImpl {
             registry: Arc::new(RegistryStub {
-                artifacts: ArtifactSet {
-                    route: Some(serde_json::json!({"op":"create"})),
-                    ..Default::default()
-                },
+                artifacts: ArtifactSet::default(),
             }),
             validators: vec![Arc::new(ValidatorStub {
                 result: Some(ValidationResult {
@@ -312,10 +292,7 @@ mod tests {
     async fn create_propagates_validator_execution_errors() {
         let usecase = RecordUseCaseImpl {
             registry: Arc::new(RegistryStub {
-                artifacts: ArtifactSet {
-                    route: Some(serde_json::json!({"op":"create"})),
-                    ..Default::default()
-                },
+                artifacts: ArtifactSet::default(),
             }),
             validators: vec![Arc::new(ValidatorStub {
                 result: None,
@@ -348,10 +325,7 @@ mod tests {
         let filter_slot = Arc::new(Mutex::new(None));
         let usecase = RecordUseCaseImpl {
             registry: Arc::new(RegistryStub {
-                artifacts: ArtifactSet {
-                    route: Some(serde_json::json!({"op":"query"})),
-                    ..Default::default()
-                },
+                artifacts: ArtifactSet::default(),
             }),
             validators: vec![],
             store: Arc::new(StoreStub {
